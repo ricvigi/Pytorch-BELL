@@ -1,0 +1,3 @@
+https://pytorch.org/docs/stable/generated/torch.sparse.mm.html
+    reduction operator on torch.sparse.mm is ONLY implemented on CSR format on CPU.
+    torch.sparse.mm() doesn't support computing derivaties with respect to CSR matrices.
