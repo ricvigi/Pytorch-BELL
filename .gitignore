@@ -2,3 +2,6 @@ Prometheus*.pdf
 .*
 *.zip
 *.pdf
+*.cc
+libtorch
+*.o
