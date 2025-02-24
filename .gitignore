@@ -3,5 +3,5 @@ Prometheus*.pdf
 *.zip
 *.pdf
 *.cc
-libtorch
+*/libtorch
 *.o
