@@ -1,25 +1,21 @@
 #include <iostream>
+#include <functional>
 
-struct myClass
-{
-public:
-  void set_x(int const val) noexcept { x = val; }
-  void set_y(int const val) noexcept { y = val; }
-  int x = 42;
-  int y;
-};
 
-struct myOtherClass: myClass
-{
-  int z = 111;
-};
 int main(int argc, char** argv)
 {
-  myOtherClass x;
-  x.y = 11;
-  printf("x.x is %d, x.y is %d, z is %d\n", x.x, x.y, x.z);
-  x.set_x(12);
-  x.set_y(13);
-  printf("x.x is %d, x.y is %d, z is %d \n", x.x, x.y, x.z);
+  int a = 1;
+  std::function<int()> f = [a]() mutable -> int { int res = a*9; ++a; printf("res is: %d, a is : %d\n", res, a); return a; };
+  auto ff = [&f]() -> void { printf("calling f: %d\n", f()); };
+  ff();
+  int b[10];
+  for (int i = 0; i < 10; i++)
+  {
+    b[i] = i;
+  }
+  for (int i = 0; i < 10; i++)
+  {
+    printf("b[%d] is: %d\n", i, b[i]);
+  }
   return 0;
 }
