@@ -5,3 +5,4 @@ desensiPapers
 */libtorch
 *.o
 
+CUDALibrarySamples
