@@ -6,3 +6,5 @@ desensiPapers
 *.o
 
 CUDALibrarySamples
+extension-cpp
+spmm_blockedell
