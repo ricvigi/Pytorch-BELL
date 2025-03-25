@@ -10,3 +10,5 @@ extension-cpp
 spmm_blockedell
 ssgetpy
 DGX
+programs/libtorch.zip
+test_sparse_conversion.*
