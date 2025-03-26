@@ -11,3 +11,4 @@ spmm_blockedell
 ssgetpy
 DGX
 programs/libtorch.zip
+*.out
