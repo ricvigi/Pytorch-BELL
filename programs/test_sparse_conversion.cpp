@@ -32,7 +32,6 @@ int main(int argc, char** argv)
   torch::Tensor A = torch::randn({x, y});
   A.masked_fill_(A < threshold, 0);
 
-  n_blocks_x = A.size(0) / kernel_size;
 
 
   printf("All Good\n");
