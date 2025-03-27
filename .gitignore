@@ -13,4 +13,4 @@ DGX
 programs/libtorch.zip
 *.out
 *.cc
-*.md
+Adversarial-Contrastive-Learning-Loss-explained.md
