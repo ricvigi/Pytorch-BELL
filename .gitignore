@@ -12,3 +12,4 @@ ssgetpy
 DGX
 programs/libtorch.zip
 *.out
+*.cc
