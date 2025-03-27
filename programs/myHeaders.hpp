@@ -2,9 +2,16 @@
 #define MY_HEADERS_HPP
 #include <torch/torch.h>
 #include <cstdio>
-#include <vector>
-#include <cmath>
 
+/**
+ * @brief Prints the values stored in a two dimensional tensor of size (x,y)
+ *
+ * @param &A Reference to the tensor we wish to print
+ * @param x Size of the first dimension of A
+ * @param y Size of the second dimension of A
+ *
+ * @return void
+ */
 static inline void printTensor(const torch::Tensor &A, int x, int y)
 {
   for (int i = 0; i < x; i++)
@@ -17,20 +24,31 @@ static inline void printTensor(const torch::Tensor &A, int x, int y)
   }
 }
 
-/* ATTENTION: Find a better way to implement this algorithm. NOTE: keep in mind that we need to return a sorted list.
+/* ATTENTION: Find a faster way (if possible) to implement this algorithm. NOTE: keep in mind that we need to return a sorted list.
  * The algorithm returns all divisors of x up to x / 2 */
-static inline std::vector<int> findDivisors(int x) {
-    std::vector<int> divisors;
-    int i = 2;
-    while (i <= (x / 2)) /* With normal iteration the result array is naturally sorted */
+/**
+ * @brief Finds all the divisors of a number x, up to x / 2
+ *
+ * @param x The number we wish to find the divisors of
+ * @param **divisors A double pointer to an (initialized) array of integers of one element.
+ *
+ * @return The size of the array of integers that stores all the found divisors of x
+ */
+static inline int findDivisors(int x, int **divisors)
+{
+  int size = 0;
+  int i = 2;
+  while (i <= (x / 2)) /* With normal iteration the result array is naturally sorted */
+  {
+    if (x % i == 0)
     {
-      if (x % i == 0)
-      {
-        divisors.push_back(i);
-      }
-      i++;
+      size += 1;
+      *divisors = (int*) realloc(*divisors, sizeof(int)*size);
+      (*divisors)[size - 1] = i;
     }
-    return divisors; /* ATTENTION: Must return a sorted array */
+    i++;
+  }
+  return size;
 }
 
 #endif

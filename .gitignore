@@ -14,3 +14,5 @@ programs/libtorch.zip
 *.out
 *.cc
 Adversarial-Contrastive-Learning-Loss-explained.md
+*.kate-swq
+*.kate-swp
