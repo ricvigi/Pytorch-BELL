@@ -24,6 +24,19 @@ static inline void printTensor(const torch::Tensor &A, int x, int y)
   }
 }
 
+template <typename T> /* Here we are not checking that T is strictly numeric */
+static inline void printMat(const T* M, int rows, int cols)
+{
+  for (int i = 0; i < rows; i++)
+  {
+    for (int j = 0; j < cols; j++)
+    {
+      std::cout << M[i * cols + j] << " ";
+    }
+    printf("\n");
+  }
+}
+
 /* ATTENTION: Find a faster way (if possible) to implement this algorithm. NOTE: keep in mind that we need to return a sorted list.
  * The algorithm returns all divisors of x up to x / 2 */
 /**
