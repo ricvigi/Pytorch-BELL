@@ -10,7 +10,7 @@ int bestBlockSize(torch::Tensor& A, /* in */
                   int& res,         /* out */
                   int& ellCols);    /* out */
 
-
+void printEllValue(float* ellValue, int rows, int cols, int res);
 int main(int argc, char** argv)
 {
   if (argc < 3)
@@ -51,29 +51,23 @@ int main(int argc, char** argv)
  */
 int bestBlockSize(torch::Tensor& A, int x, int y, int& res, int& ellCols)
 {
+  /* Variable declarations */
   int i, j, kernelSize, nBlocksH, nBlocksW, zeroBlocks, maxZeroBlocks, zeroCount, nZeroes, *divisors, divisorsSize, *ellColInd, rows, cols, size, colIdx;
   float start, end, *ellValue;
   torch::Tensor B, bSums, block;
+
+  /* Square matrix check */
   if (x != y)
   {
     printf("We are only accepting square matrices for now...\n");
     fflush(stdout);
     return EXIT_FAILURE;
   }
-  res = 0;
-  zeroCount = 0;
-  maxZeroBlocks = 0;
-  divisors = (int*) malloc(sizeof(int)); /* Initialize the pointer */
-  divisorsSize = findDivisors(x, &divisors);
-
-  // printTensor(A, x, y);
 
   /* Lambdas */
-  /* Computes the number of zero blocks of size kernelSize in matrix A */
   auto computeZeroBlocks = [&](int kernelSize) -> int
   {
-    // printf("Kernel size: %d\n", kernelSize);
-
+    /* Computes the number of zero blocks of size kernelSize in matrix A */
     int nBlocksH = x / kernelSize;
     int nBlocksW = y / kernelSize;
 
@@ -83,26 +77,27 @@ int bestBlockSize(torch::Tensor& A, int x, int y, int& res, int& ellCols)
 
     return (bSums == 0).sum().item<int>();
   };
-
-  auto computeEllCols = [&](int kernelSize) -> torch::Tensor /* This lambda returns a tensor because we need it in another lambda */
+  auto computeEllCols = [&](int kernelSize) -> int
   {
+    /* This lambda returns a tensor that contains the sum of all blocks of size kernelSize */
     nBlocksH = x / kernelSize;
     nBlocksW = y / kernelSize;
     B = A.view({nBlocksH, kernelSize, nBlocksW, kernelSize});
     B = B.permute({0, 2, 1, 3});
     bSums = B.sum({2,3});
     // printTensor(bSums, nBlocksH, nBlocksW);
-    return bSums;
+    return (bSums != 0).sum(1).max().item<int>();
   };
   auto getEllColInd = [&]() -> void
   {
     int i, j, idx, rowSize;
     float val;
-    int *row = nullptr; /* This need to be nullptr because we use realloc in the loop */
+
     for (i = 0; i < bSums.size(0); i++)
     {
       idx = 0;
       rowSize = 0;
+      int *row = nullptr; /* This need to be nullptr because we use realloc in the loop */
       for (j = 0; j < bSums.size(1); j++)
       {
         val = bSums[i][j].item<float>();
@@ -124,12 +119,46 @@ int bestBlockSize(torch::Tensor& A, int x, int y, int& res, int& ellCols)
           ellColInd[i*cols + j] = -1;
         }
       }
+      free(row);
     }
-    free(row);
+  };
+  auto fillEllValues = [&]()
+  {
+    int nBlocksW = A.size(1) / res;
+
+    for (int i = 0; i < rows; i++)
+    {
+      for (int j = 0; j < cols; j++)
+      {
+        int blockCol = ellColInd[i * cols + j];
+        for (int bi = 0; bi < res; bi++)
+        {
+          for (int bj = 0; bj < res; bj++)
+          {
+            int dstIndex = ((i * cols + j) * res + bi) * res + bj;
+            if (blockCol != -1)
+            {
+              int rowIndex = i * res + bi;
+              int colIndex = blockCol * res + bj;
+              ellValue[dstIndex] = A[rowIndex][colIndex].item<float>();
+            } else
+            {
+              ellValue[dstIndex] = 0.0f;
+            }
+          }
+        }
+      }
+    }
   };
 
   /* Get the optimal kernelSize value */
   start = omp_get_wtime();
+  res = 0;
+  zeroCount = 0;
+  maxZeroBlocks = 0;
+  divisors = (int*) malloc(sizeof(int)); /* Initialize the pointer */
+  divisorsSize = findDivisors(x, &divisors);
+
   for (i = 0; i < divisorsSize; i++)
   {
     kernelSize = divisors[i];
@@ -149,51 +178,24 @@ int bestBlockSize(torch::Tensor& A, int x, int y, int& res, int& ellCols)
 
   /* Now get ellCols, the actual number of columns in the BELL format */
   /* TODO: Enclose this operation in a function */
-  bSums = computeEllCols(res);
-  ellCols = (bSums != 0).sum(1).max().item<int>();
+  ellCols = computeEllCols(res);
   cols = ellCols;
   rows = bSums.size(0);
   size = rows*cols;
   ellColInd = (int*) malloc(size*sizeof(int));
 
   getEllColInd();
-  printTensor(bSums, bSums.size(0), bSums.size(1));
-  printMat(ellColInd, rows, cols);
-  // std::cout << B << std::endl;
-  std::cout << A << std::endl;
-  ellValue = (float*) malloc((rows*cols*res*res));
+  // printTensor(bSums, bSums.size(0), bSums.size(1));
+  // printMat(ellColInd, rows, cols);
+  // std::cout << A << std::endl;
+  ellValue = (float*) malloc((rows*cols*res*res)*sizeof(float));
+  fillEllValues();
 
   end = omp_get_wtime();
 
-  for (i = 0; i < rows; i++)
-  {
-    for (j = 0; j < cols; j++)
-    {
-      colIdx = ellColInd[i*cols + j];
-      if ( colIdx == -1 )
-      {
-        for (int ii = 0; ii < block.size(0); ii++)
-        {
-          for (int jj = 0; jj < block.size(1); jj++)
-          {
-            ellValue[(i+ii)*cols + (j+jj)] = 0.0;
-          }
-        }
-      } else
-      {
-        block = B[i][j];
-        for (int ii = 0; ii < block.size(0); ii++)
-        {
-          for (int jj = 0; jj < block.size(1); jj++)
-          {
-            float val = block[ii][jj].item<float>();
-            ellValue[(i+ii)*cols + (j+jj)] = val;
-          }
-        }
-      }
-    }
-  }
-  printMat(ellValue, rows, (cols*res));
+
+  // printEllValue(ellValue, rows, cols, res);
+
   printf("We can filter out %d zeroes with a kernel of size %d\n", zeroCount, res);
   printf("Matrix has %d zero blocks of size %d\n", maxZeroBlocks, res);
   printf("Total time needed for computation: %f\n", end - start);
@@ -203,3 +205,5 @@ int bestBlockSize(torch::Tensor& A, int x, int y, int& res, int& ellCols)
   free(ellValue);
   return EXIT_SUCCESS;
 }
+
+

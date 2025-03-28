@@ -37,6 +37,20 @@ static inline void printMat(const T* M, int rows, int cols)
   }
 }
 
+static inline void printEllValue(float* ellValue, int rows, int cols, int res) {
+  for (int i = 0; i < rows * res; ++i) {
+    for (int j = 0; j < cols * res; ++j) {
+      int blockRow = i / res;
+      int blockCol = j / res;
+      int bi = i % res;
+      int bj = j % res;
+      int index = ((blockRow * cols + blockCol) * res + bi) * res + bj;
+      printf("%7.4f ", ellValue[index]);
+    }
+    printf("\n");
+  }
+}
+
 /* ATTENTION: Find a faster way (if possible) to implement this algorithm. NOTE: keep in mind that we need to return a sorted list.
  * The algorithm returns all divisors of x up to x / 2 */
 /**
