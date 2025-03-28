@@ -9,7 +9,8 @@ int bestBlockSize(torch::Tensor& A,   /* in */
                   int y,              /* in */
                   int& ellBlockSize,  /* out */
                   int& ellCols,       /* out */
-                  int*& ellColInd);    /* out */
+                  int*& ellColInd,    /* out */
+                  float*& ellValue);  /* out */
 
 void printEllValue(float* ellValue, int rows, int cols, int ellBlockSize);
 int main(int argc, char** argv)
@@ -21,7 +22,7 @@ int main(int argc, char** argv)
     return EXIT_FAILURE;
   }
   int x, y, ellBlockSize, ellCols;
-  float threshold;
+  float threshold, *ellValue;
   torch::Tensor A, B, bSums;
   int *ellColInd = nullptr;
 
@@ -31,7 +32,7 @@ int main(int argc, char** argv)
 
   A = torch::randn({x, y});
   A.masked_fill_(A < threshold, 0);
-  bestBlockSize(A, x, y, ellBlockSize, ellCols, ellColInd);
+  bestBlockSize(A, x, y, ellBlockSize, ellCols, ellColInd, ellValue);
   printf("BEST_KERNEL_SIZE: %d\n", ellBlockSize);
   printf("ELLCOLS: %d\n", ellCols);
 
@@ -52,17 +53,17 @@ int main(int argc, char** argv)
  *
  * @return Best block size on success, EXIT_FAILURE on error.
  */
-int bestBlockSize(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCols, int*& ellColInd)
+int bestBlockSize(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCols, int*& ellColInd, float*& ellValue)
 {
   /* Variable declarations */
   int i, j, kernelSize, zeroBlocks, maxZeroBlocks, zeroCount, nZeroes, *divisors, divisorsSize, rows, cols, size, colIdx;
-  float start, end, *ellValue;
+  float start, end;
   torch::Tensor bSums, block;
 
   /* Square matrix check */
   if (x != y)
   {
-    printf("We are only accepting square matrices...\n");
+    printf("Matrix must be square...\n");
     fflush(stdout);
     return EXIT_FAILURE;
   }
@@ -101,7 +102,7 @@ int bestBlockSize(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
     bSums = B.sum({2,3});
     return bSums;
   };
-  auto getEllColInd = [&](torch::Tensor bSums, int *ellColInd) -> void
+  auto getEllColInd = [&](torch::Tensor bSums, int* ellColInd) -> void
   {
   /*
    * Compute the size of ellColInd array, i.e. the array that stoellBlockSize the index of the column position of all non-zero
@@ -114,14 +115,14 @@ int bestBlockSize(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
     {
       idx = 0;
       rowSize = 0;
-      int *row; /* This need to be nullptr because we use realloc in the loop */
+      int *row = nullptr;
       for (j = 0; j < cols; j++)
       {
         val = bSums[i][j].item<float>();
         if (val != 0)
         {
           rowSize += 1;
-          row = (int*) malloc(rowSize * sizeof(int));
+          row = (int*) realloc(row, rowSize * sizeof(int));
           row[idx] = j;
           idx++;
         }
@@ -184,8 +185,8 @@ int bestBlockSize(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
   ellBlockSize = 0;
   zeroCount = 0;
   maxZeroBlocks = 0;
-  divisors = (int*) malloc(sizeof(int)); /* Initialize the pointer */
-  divisorsSize = findDivisors(x, &divisors);
+  divisors = nullptr; /* Initialize the pointer */
+  divisorsSize = findDivisors(x, divisors);
 
   for (i = 0; i < divisorsSize; i++)
   {
@@ -216,6 +217,7 @@ int bestBlockSize(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
 
   /* Create the ellColInd array */
   getEllColInd(bSums, ellColInd);
+
 
   // printTensor(bSums, bSums.size(0), bSums.size(1));
   printMat(ellColInd, rows, cols);
