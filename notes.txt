@@ -1,9 +1,0 @@
-https://pytorch.org/docs/stable/generated/torch.sparse.mm.html
-    reduction operator on torch.sparse.mm is ONLY implemented on CSR format on CPU.
-    torch.sparse.mm() doesn't support computing derivaties with respect to CSR matrices.
-        -> We could implement derivatives support for CSR matrices and reduction operator for CSR format on GPU.
-
-    Sparse representation works well with graph adjacency matrices -> Maybe talk to prof Quattrociocchi
-
-torch.sparse.addmm(mat, mat1, mat2, *, beta=1., alpha=1.) -> Tensor
-    This function doesn't support computing derivaties with respect to CSR matrices.
