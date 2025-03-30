@@ -83,10 +83,10 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
   }
 
   /*
-	 *
-	 * START LAMBDA DEFINITIONS
-	 *
-	 */
+   *
+   * START LAMBDA DEFINITIONS
+   *
+   */
   auto computeZeroBlocks = [&](int kernelSize) -> int
   {
     /* Computes the number of zero blocks of size kernelSize in matrix A */
@@ -185,16 +185,16 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
     }
   };
   /*
-	 *
-	 * END LAMBDA DEFINITIONS
-	 *
-	 */
+   *
+   * END LAMBDA DEFINITIONS
+   *
+   */
 
   /*
-	 *
-	 * START PROGRAM
-	 *
-	 */
+   *
+   * START PROGRAM
+   *
+   */
 
   /* Get the optimal kernelSize value. It gets stored in variable ellBlockSize */
   start = omp_get_wtime();
