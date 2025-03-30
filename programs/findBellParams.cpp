@@ -4,20 +4,19 @@
 #include <cmath>
 #include "myHeaders.hpp"
 
-int bestBlockSize(torch::Tensor& A,   /* in */
-                  int x,              /* in */
-                  int y,              /* in */
-                  int& ellBlockSize,  /* out */
-                  int& ellCols,       /* out */
-                  int*& ellColInd,    /* out */
-                  float*& ellValue);  /* out */
+int getBlockedEllParams(torch::Tensor& A,   /* in */
+                  int x,                    /* in */
+                  int y,                    /* in */
+                  int& ellBlockSize,        /* out */
+                  int& ellCols,             /* out */
+                  int*& ellColInd,          /* out */
+                  float*& ellValue);        /* out */
 
-void printEllValue(float* ellValue, int rows, int cols, int ellBlockSize);
 int main(int argc, char** argv)
 {
-  if (argc < 3)
+  if (argc < 4)
   {
-    printf("Usage: x, y, threshold\n");
+    printf("Usage: x, y, threshold, print debug\n");
     fflush(stdout);
     return EXIT_FAILURE;
   }
@@ -29,10 +28,11 @@ int main(int argc, char** argv)
   x = atoi(argv[1]);
   y = atoi(argv[2]);
   threshold = atof(argv[3]);
+  int PRINT_DEBUG = atoi(argv[4]);
 
   A = torch::randn({x, y});
   A.masked_fill_(A < threshold, 0);
-  bestBlockSize(A, x, y, ellBlockSize, ellCols, ellColInd, ellValue);
+  getBlockedEllParams(A, x, y, ellBlockSize, ellCols, ellColInd, ellValue);
   printf("BEST_KERNEL_SIZE: %d\n", ellBlockSize);
   printf("ELLCOLS: %d\n", ellCols);
 
@@ -53,7 +53,7 @@ int main(int argc, char** argv)
  *
  * @return Best block size on success, EXIT_FAILURE on error.
  */
-int bestBlockSize(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCols, int*& ellColInd, float*& ellValue)
+int getBlockedEllParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCols, int*& ellColInd, float*& ellValue)
 {
   /* Variable declarations */
   int i, j, kernelSize, zeroBlocks, maxZeroBlocks, zeroCount, nZeroes, *divisors, divisorsSize, rows, cols, size, colIdx;
@@ -140,24 +140,26 @@ int bestBlockSize(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
       free(row);
     }
   };
-  auto getEllValues = [&](float *ellValue, int *ellColInd)
+  auto getEllValues = [&](float *ellValue, int *ellColInd) -> void
   {
     /* This lambda gives the blocked ellpack values array */
-    int nBlocksW = A.size(1) / ellBlockSize;
+    int nBlocksW, blockCol, dstIndex, rowIndex, colIndex;
+
+    nBlocksW = A.size(1) / ellBlockSize;
     for (int i = 0; i < rows; i++)
     {
       for (int j = 0; j < cols; j++)
       {
-        int blockCol = ellColInd[i * cols + j];
+        blockCol = ellColInd[i * cols + j];
         for (int bi = 0; bi < ellBlockSize; bi++)
         {
           for (int bj = 0; bj < ellBlockSize; bj++)
           {
-            int dstIndex = ((i * cols + j) * ellBlockSize + bi) * ellBlockSize + bj;
+            dstIndex = ((i * cols + j) * ellBlockSize + bi) * ellBlockSize + bj;
             if (blockCol != -1)
             {
-              int rowIndex = i * ellBlockSize + bi;
-              int colIndex = blockCol * ellBlockSize + bj;
+              rowIndex = i * ellBlockSize + bi;
+              colIndex = blockCol * ellBlockSize + bj;
               ellValue[dstIndex] = A[rowIndex][colIndex].item<float>();
             } else
             {
@@ -218,10 +220,8 @@ int bestBlockSize(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
   /* Create the ellColInd array */
   getEllColInd(bSums, ellColInd);
 
-
   // printTensor(bSums, bSums.size(0), bSums.size(1));
-  printMat(ellColInd, rows, cols);
-  std::cout << A << std::endl;
+
   ellValue = (float*) malloc((rows*cols*ellBlockSize*ellBlockSize)*sizeof(float));
   getEllValues(ellValue, ellColInd);
 
@@ -231,9 +231,12 @@ int bestBlockSize(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
    * END PROGRAM
    *
    */
-
-  printEllValue(ellValue, rows, cols, ellBlockSize);
-
+  if (PRINT_DEBUG)
+  {
+    printMat(ellColInd, rows, cols);
+    std::cout << A << std::endl;
+    printEllValue(ellValue, rows, cols, ellBlockSize);
+  }
   printf("We can filter out %d zeroes with a kernel of size %d\n", zeroCount, ellBlockSize);
   printf("Matrix has %d zero blocks of size %d\n", maxZeroBlocks, ellBlockSize);
   printf("Total time needed for computation: %f\n", end - start);
