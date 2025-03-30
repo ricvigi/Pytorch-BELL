@@ -7,12 +7,12 @@ LIBS = -ltorch -ltorch_cpu -lc10
 LIBTORCH = $(INCLUDES) $(LDFLAGS) $(LIBS)
 HEADERS = myHeaders.hpp
 
-TARGETS = test_sparse_conversion.out test_count_zero_blocks.out docTests.out test.out classes.out COO.out find_best_block_size.out
+TARGETS = test_sparse_conversion.out test_count_zero_blocks.out docTests.out test.out classes.out COO.out findBellParams.out
 
 all: $(TARGETS)
 
-find_best_block_size.out: find_best_block_size.cpp $(HEADERS)
-	$(CXX) $(CXXFLAGS) find_best_block_size.cpp $(LIBTORCH) -o $@
+findBellParams.out: findBellParams.cpp $(HEADERS)
+	$(CXX) $(CXXFLAGS) findBellParams.cpp $(LIBTORCH) -o $@
 
 test_sparse_conversion.out: test_sparse_conversion.cpp $(HEADERS)
 	$(CXX) $(CXXFLAGS) test_sparse_conversion.cpp $(LIBTORCH) -o $@

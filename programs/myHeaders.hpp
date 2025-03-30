@@ -2,6 +2,7 @@
 #define MY_HEADERS_HPP
 #include <torch/torch.h>
 #include <cstdio>
+#include <cmath>
 
 /**
  * @brief Prints the values stored in a two dimensional tensor of size (x,y)
@@ -24,7 +25,22 @@ static inline void printTensor(const torch::Tensor &A, int x, int y)
   }
 }
 
-template <typename T> /* Here we are not checking that T is strictly numeric */
+static inline int isPrime(const int x)
+{
+  int root = (int) sqrt(x);
+  int prime = 1;
+  for (int i = 2; i <= root; i++)
+  {
+    if ((x % i) == 0)
+    {
+      prime = 0;
+      break;
+    }
+  }
+  return prime;
+}
+
+template <typename T> /* ATTENTION: We should check that T is strictly numeric */
 static inline void printMat(const T* M, int rows, int cols)
 {
   for (int i = 0; i < rows; i++)

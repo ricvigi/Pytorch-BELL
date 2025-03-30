@@ -4,7 +4,7 @@
 #include <cmath>
 #include "myHeaders.hpp"
 
-int getBlockedEllParams(torch::Tensor& A,   /* in */
+int getBellParams(torch::Tensor& A,   /* in */
                   int x,                    /* in */
                   int y,                    /* in */
                   int& ellBlockSize,        /* out */
@@ -12,15 +12,18 @@ int getBlockedEllParams(torch::Tensor& A,   /* in */
                   int*& ellColInd,          /* out */
                   float*& ellValue);        /* out */
 
+int PRINT_DEBUG;
+
 int main(int argc, char** argv)
 {
-  if (argc < 4)
+
+  if (argc < 5)
   {
     printf("Usage: x, y, threshold, print debug\n");
     fflush(stdout);
     return EXIT_FAILURE;
   }
-  int x, y, ellBlockSize, ellCols;
+  int x, y, ellBlockSize, ellCols, err;
   float threshold, *ellValue;
   torch::Tensor A, B, bSums;
   int *ellColInd = nullptr;
@@ -28,11 +31,17 @@ int main(int argc, char** argv)
   x = atoi(argv[1]);
   y = atoi(argv[2]);
   threshold = atof(argv[3]);
-  int PRINT_DEBUG = atoi(argv[4]);
+  PRINT_DEBUG = atoi(argv[4]);
 
   A = torch::randn({x, y});
   A.masked_fill_(A < threshold, 0);
-  getBlockedEllParams(A, x, y, ellBlockSize, ellCols, ellColInd, ellValue);
+  err = getBellParams(A, x, y, ellBlockSize, ellCols, ellColInd, ellValue);
+  if (err != 0)
+  {
+    printf("Error code %d, exiting!\n", err);
+    fflush(stdout);
+    return err;
+  }
   printf("BEST_KERNEL_SIZE: %d\n", ellBlockSize);
   printf("ELLCOLS: %d\n", ellCols);
 
@@ -53,17 +62,22 @@ int main(int argc, char** argv)
  *
  * @return Best block size on success, EXIT_FAILURE on error.
  */
-int getBlockedEllParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCols, int*& ellColInd, float*& ellValue)
+int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCols, int*& ellColInd, float*& ellValue)
 {
   /* Variable declarations */
   int i, j, kernelSize, zeroBlocks, maxZeroBlocks, zeroCount, nZeroes, *divisors, divisorsSize, rows, cols, size, colIdx;
   float start, end;
   torch::Tensor bSums, block;
 
-  /* Square matrix check */
+  /* Matrix sizes checks */
   if (x != y)
   {
-    printf("Matrix must be square...\n");
+    printf("Matrix must be square\n");
+    fflush(stdout);
+    return EXIT_FAILURE;
+  } else if (isPrime(x) == 1)
+  {
+    printf("Matrix dimensions can't be prime\n");
     fflush(stdout);
     return EXIT_FAILURE;
   }
@@ -231,7 +245,7 @@ int getBlockedEllParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& 
    * END PROGRAM
    *
    */
-  if (PRINT_DEBUG)
+  if (PRINT_DEBUG > 0)
   {
     printMat(ellColInd, rows, cols);
     std::cout << A << std::endl;
