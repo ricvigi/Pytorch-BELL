@@ -246,8 +246,7 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
   /* Create the ellColInd array */
   getEllColInd(bSums, ellColInd);
 
-  // printTensor(bSums, bSums.size(0), bSums.size(1));
-
+  /* Create the ellValue array */
   ellValue = (float*) malloc((rows*cols*ellBlockSize*ellBlockSize)*sizeof(float));
   getEllValues(ellValue, ellColInd);
 
