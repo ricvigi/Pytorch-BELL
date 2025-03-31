@@ -80,16 +80,19 @@ static inline void printEllValue(float* ellValue, int rows, int cols, int res) {
 static inline int findDivisors(int x, int*& divisors)
 {
   int size = 0;
-  int i = 2;
-  while (i <= (x / 2)) /* With normal iteration the result array is naturally sorted */
+  int i;
+# pragma omp parallel for schedule(static, 1)
+  for (i = 2; i <= (x / 2); i++) /* With normal iteration the result array is naturally sorted */
   {
     if (x % i == 0)
     {
-      size += 1;
-      divisors = (int*) realloc(divisors, sizeof(int)*size);
+#     pragma omp critical
+      {
+        size += 1;
+        divisors = (int*) realloc(divisors, sizeof(int)*size);
+      }
       divisors[size - 1] = i;
     }
-    i++;
   }
   return size;
 }
