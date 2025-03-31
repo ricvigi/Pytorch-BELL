@@ -94,11 +94,9 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
     torch::Tensor B, bSums;
     nBlocksH = x / kernelSize;
     nBlocksW = y / kernelSize;
-
     B = A.view({nBlocksH, kernelSize, nBlocksW, kernelSize});
     B = B.permute({0, 2, 1, 3});
     bSums = B.sum({2, 3});
-
     return (bSums == 0).sum().item<int>();
   };
   auto computeEllCols = [&](int kernelSize) -> torch::Tensor
@@ -125,13 +123,12 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
     int idx, rowSize;
     float val;
 #   pragma omp parallel for shared(ellColInd) private(idx, rowSize, val)
-    for (int i = 0; i < rows; i++)
+    for (int i = 0; i < rows; ++i)
     {
       idx = 0;
       rowSize = 0;
-      int *row = nullptr;
-      row = (int*) malloc(cols*sizeof(int));
-      for (int j = 0; j < bSums.size(1); j++)
+      int *row = (int*) malloc(cols*sizeof(int));
+      for (int j = 0; j < bSums.size(1); ++j)
       {
         val = bSums[i][j].item<float>();
         if (val != 0)
@@ -141,7 +138,7 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
           idx++;
         }
       }
-      for (int j = 0; j < cols; j++)
+      for (int j = 0; j < cols; ++j)
       {
         if (j < rowSize)
         {
@@ -158,19 +155,17 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
   {
     /* This lambda gives the blocked ellpack values array */
     int nBlocksW, blockCol, dstIndex, rowIndex, colIndex;
-
     nBlocksW = A.size(1) / ellBlockSize;
 #   pragma omp parallel for collapse(2) private(blockCol, dstIndex, rowIndex, colIndex)
-    for (int i = 0; i < rows; i++)
+    for (int i = 0; i < rows; ++i)
     {
-      for (int j = 0; j < cols; j++)
+      for (int j = 0; j < cols; ++j)
       {
         blockCol = ellColInd[i * cols + j];
-        for (int bi = 0; bi < ellBlockSize; bi++)
+        for (int bi = 0; bi < ellBlockSize; ++bi)
         {
-          for (int bj = 0; bj < ellBlockSize; bj++)
+          for (int bj = 0; bj < ellBlockSize; ++bj)
           {
-
             dstIndex = ((i * cols + j) * ellBlockSize + bi) * ellBlockSize + bj;
             if (blockCol != -1)
             {
@@ -214,7 +209,7 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
     start = localStart;
     /* Loop is reversed because we try to balance work better */
 #   pragma omp for schedule(guided)
-    for (i = divisorsSize - 1; i >= 0; i-- )
+    for (i = divisorsSize - 1; i >= 0; --i )
     {
       localKernelSize = divisors[i];
       localZeroBlocks = computeZeroBlocks(localKernelSize);
@@ -271,7 +266,7 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
   }
   printf("We can filter out %d zeroes with a kernel of size %d\n", zeroCount, ellBlockSize);
   printf("Matrix has %d zero blocks of size %d\n", maxZeroBlocks, ellBlockSize);
-  printf("Total time needed for computation: %f\n", end - start);
+  printf("Total time needed for computation: %7.4f\n", end - start);
 
   free(divisors);
   // free(ellColInd);

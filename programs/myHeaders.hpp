@@ -19,12 +19,19 @@ static inline void printTensor(const torch::Tensor &A, int x, int y)
   {
     for (int j = 0; j < y; j++)
     {
-      printf("%f ", A.index({i, j}).item<float>());
+      printf("%7.4f ", A.index({i, j}).item<float>());
     }
     printf("\n");
   }
 }
 
+/**
+ * @brief Determines whether a number is prime or not
+ *
+ * @param x The number that we need to check
+ *
+ * @return 1 if x is prime, 0 otherwise
+ */
 static inline int isPrime(const int x)
 {
   int root = (int) sqrt(x);
@@ -41,6 +48,14 @@ static inline int isPrime(const int x)
 }
 
 template <typename T> /* ATTENTION: We should check that T is strictly numeric */
+/**
+ * @brief Prints a 2D matrix of unspecified (hopefully) numeric type
+ *
+ * @param M The matrix
+ * @param rows The number of rows in the matrix
+ * @param cols The number of columns in the matrix
+ * @return void
+ */
 static inline void printMat(const T* M, int rows, int cols)
 {
   for (int i = 0; i < rows; i++)
@@ -53,14 +68,21 @@ static inline void printMat(const T* M, int rows, int cols)
   }
 }
 
-static inline void printEllValue(float* ellValue, int rows, int cols, int res) {
-  for (int i = 0; i < rows * res; ++i) {
-    for (int j = 0; j < cols * res; ++j) {
-      int blockRow = i / res;
-      int blockCol = j / res;
-      int bi = i % res;
-      int bj = j % res;
-      int index = ((blockRow * cols + blockCol) * res + bi) * res + bj;
+/**
+ * @brief Determines whether a number is prime or not
+ *
+ * @param x The number that we need to check
+ *
+ * @return 1 if x is prime, 0 otherwise
+ */
+static inline void printEllValue(float* ellValue, int rows, int cols, int kernelSize) {
+  for (int i = 0; i < rows * kernelSize; ++i) {
+    for (int j = 0; j < cols * kernelSize; ++j) {
+      int blockRow = i / kernelSize;
+      int blockCol = j / kernelSize;
+      int bi = i % kernelSize;
+      int bj = j % kernelSize;
+      int index = ((blockRow * cols + blockCol) * kernelSize + bi) * kernelSize + bj;
       printf("%7.4f ", ellValue[index]);
     }
     printf("\n");
