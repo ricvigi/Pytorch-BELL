@@ -4,14 +4,6 @@
 #include <cmath>
 #include "myHeaders.hpp"
 
-int getBellParams(torch::Tensor& A,   /* in */
-                  int x,                    /* in */
-                  int y,                    /* in */
-                  int& ellBlockSize,        /* out */
-                  int& ellCols,             /* out */
-                  int*& ellColInd,          /* out */
-                  float*& ellValue);        /* out */
-
 int PRINT_DEBUG;
 
 int main(int argc, char** argv)
@@ -46,7 +38,7 @@ int main(int argc, char** argv)
   printf("ELLCOLS: %d\n", ellCols);
 
   free(ellColInd);
-
+  free(ellValue);
   printf("All done. Great Success!\n");
   return EXIT_SUCCESS;
 }
@@ -154,8 +146,7 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
   auto getEllValues = [&](float *ellValue, int *ellColInd) -> void
   {
     /* This lambda gives the blocked ellpack values array */
-    int nBlocksW, blockCol, dstIndex, rowIndex, colIndex;
-    nBlocksW = A.size(1) / ellBlockSize;
+    int blockCol, dstIndex, rowIndex, colIndex;
 #   pragma omp parallel for collapse(2) private(blockCol, dstIndex, rowIndex, colIndex)
     for (int i = 0; i < rows; ++i)
     {
@@ -256,20 +247,20 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
    * END PROGRAM
    *
    */
-  if (PRINT_DEBUG > 0)
+  if (PRINT_DEBUG)
   {
-    printMat(ellColInd, rows, cols);
     std::cout << A << std::endl;
     std::cout << bSums << std::endl;
+    printMat(ellColInd, rows, cols);
     printEllValue(ellValue, rows, cols, ellBlockSize);
   }
   printf("We can filter out %d zeroes with a kernel of size %d\n", zeroCount, ellBlockSize);
   printf("Matrix has %d zero blocks of size %d\n", maxZeroBlocks, ellBlockSize);
-  printf("Total time needed for computation: %7.4f\n", end - start);
+  printf("Total time needed for computation: %7.6f\n", end - start);
 
   free(divisors);
   // free(ellColInd);
-  free(ellValue);
+  // free(ellValue);
   return EXIT_SUCCESS;
 }
 

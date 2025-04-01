@@ -4,6 +4,14 @@
 #include <cstdio>
 #include <cmath>
 
+int getBellParams(torch::Tensor& A,         /* in */
+                  int x,                    /* in */
+                  int y,                    /* in */
+                  int& ellBlockSize,        /* out */
+                  int& ellCols,             /* out */
+                  int*& ellColInd,          /* out */
+                  float*& ellValue);        /* out */
+
 /**
  * @brief Prints the values stored in a two dimensional tensor of size (x,y)
  *
