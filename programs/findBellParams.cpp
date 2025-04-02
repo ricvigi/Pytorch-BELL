@@ -198,7 +198,8 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
     int localKernelSize, localZeroBlocks, localNZeroes;
     float localStart = omp_get_wtime();
     start = localStart;
-    /* Loop is reversed because we try to balance work better */
+    /* Loop is reversed because we try to balance work better. NOTE: This should become
+     * effective only when we are working with very big dimensions. */
 #   pragma omp for schedule(guided)
     for (i = divisorsSize - 1; i >= 0; --i )
     {
