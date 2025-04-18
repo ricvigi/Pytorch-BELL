@@ -114,15 +114,24 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
    */
     int idx, rowSize;
     float val;
+
+    std::vector<float*> rowPointers(rows);
+#   pragma omp parallel for
+    for (int i = 0; i < rows; ++i)
+    {
+      rowPointers[i] = bSums[i].contiguous().data_ptr<float>();
+    }
+
 #   pragma omp parallel for shared(ellColInd) private(idx, rowSize, val)
     for (int i = 0; i < rows; ++i)
     {
       idx = 0;
       rowSize = 0;
-      int *row = (int*) malloc(cols*sizeof(int));
+      int* row = (int*) malloc(cols*sizeof(int));
+      float* bSumsRow = rowPointers[i];
       for (int j = 0; j < bSums.size(1); ++j)
       {
-        val = bSums[i][j].item<float>();
+        val = bSumsRow[j];
         if (val != 0)
         {
           rowSize += 1;
@@ -143,10 +152,19 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
       free(row);
     }
   };
-  auto getEllValues = [&](float *ellValue, int *ellColInd) -> void
+  auto getEllValues = [&](torch::Tensor& A, float *ellValue, int *ellColInd) -> void
   {
     /* This lambda gives the blocked ellpack values array */
     int blockCol, dstIndex, rowIndex, colIndex;
+
+    std::vector<float*> rowPointers(rows * ellBlockSize);
+
+#   pragma omp parallel for
+    for (int i = 0; i < rows * ellBlockSize; ++i)
+    {
+      rowPointers[i] = A[i].contiguous().data_ptr<float>();
+    }
+
 #   pragma omp parallel for collapse(2) private(blockCol, dstIndex, rowIndex, colIndex)
     for (int i = 0; i < rows; ++i)
     {
@@ -155,18 +173,16 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
         blockCol = ellColInd[i * cols + j];
         for (int bi = 0; bi < ellBlockSize; ++bi)
         {
-          for (int bj = 0; bj < ellBlockSize; ++bj)
+          rowIndex = i * ellBlockSize + bi;
+          float* rowA = rowPointers[rowIndex];
+          int srcOffset = ellBlockSize * blockCol;
+          int dstOffset = ((i * cols + j) * ellBlockSize + bi) * ellBlockSize;
+          if (blockCol != -1)
           {
-            dstIndex = ((i * cols + j) * ellBlockSize + bi) * ellBlockSize + bj;
-            if (blockCol != -1)
-            {
-              rowIndex = i * ellBlockSize + bi;
-              colIndex = blockCol * ellBlockSize + bj;
-              ellValue[dstIndex] = A[rowIndex][colIndex].item<float>();
-            } else
-            {
-              ellValue[dstIndex] = 0.0f;
-            }
+            memcpy(&ellValue[dstOffset], &rowA[srcOffset], ellBlockSize * sizeof(float));
+          } else
+          {
+            std::fill(&ellValue[dstOffset], &ellValue[dstOffset + ellBlockSize], 0.0f);
           }
         }
       }
@@ -193,6 +209,9 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
   divisorsSize = findDivisors(x, divisors);
   omp_set_num_threads(std::min(divisorsSize, omp_get_num_procs()));
   printf("divisorsSize: %d\n", divisorsSize);
+  float tStart, tEnd;
+
+  tStart = omp_get_wtime();
 # pragma omp parallel shared(maxZeroBlocks, zeroCount, ellBlockSize) reduction(min:start)
   {
     int localKernelSize, localZeroBlocks, localNZeroes;
@@ -208,40 +227,49 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
       if (localZeroBlocks > 0)
       {
         localNZeroes = localZeroBlocks * localKernelSize * localKernelSize;
-#       pragma omp critical
-        {
           if (zeroCount < localNZeroes)
           {
-            maxZeroBlocks = localZeroBlocks;
-            zeroCount = localNZeroes;
-            ellBlockSize = localKernelSize;
+#           pragma omp critical
+            {
+              maxZeroBlocks = localZeroBlocks;
+              zeroCount = localNZeroes;
+              ellBlockSize = localKernelSize;
+            }
           }
-        }
       } else
       {
         continue;
       }
     }
   }
+  tEnd = omp_get_wtime();
+  printf("computeZeroBlocks time: %f\n", tEnd - tStart);
   omp_set_num_threads(omp_get_num_procs());
 
+  tStart = omp_get_wtime();
   /* Now get ellCols, the actual number of columns in the BELL format */
   bSums = computeEllCols(ellBlockSize);
   ellCols = (bSums != 0).sum(1).max().item<int>();
-
+  tEnd = omp_get_wtime();
+  printf("computeEllCols time: %f\n", tEnd - tStart);
   /* Allocate memory for ellColInd array */
   cols = ellCols;
   rows = x / ellBlockSize;
   size = rows*cols;
   ellColInd = (int*) malloc(size*sizeof(int));
 
+  tStart = omp_get_wtime();
   /* Create the ellColInd array */
   getEllColInd(bSums, ellColInd);
+  tEnd = omp_get_wtime();
+  printf("getEllColInd time: %f\n", tEnd - tStart);
 
+  tStart = omp_get_wtime();
   /* Create the ellValue array */
   ellValue = (float*) malloc((rows*cols*ellBlockSize*ellBlockSize)*sizeof(float));
-  getEllValues(ellValue, ellColInd);
-
+  getEllValues(A, ellValue, ellColInd);
+  tEnd = omp_get_wtime();
+  printf("getEllValues time: %f\n", tEnd - tStart);
   end = omp_get_wtime();
   /*
    *

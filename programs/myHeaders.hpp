@@ -55,7 +55,7 @@ static inline int isPrime(const int x)
   return prime;
 }
 
-template <typename T> /* ATTENTION: We should check that T is strictly numeric */
+
 /**
  * @brief Prints a 2D matrix of unspecified (hopefully) numeric type
  *
@@ -64,7 +64,8 @@ template <typename T> /* ATTENTION: We should check that T is strictly numeric *
  * @param cols The number of columns in the matrix
  * @return void
  */
-static inline void printMat(const T* M, int rows, int cols)
+template <typename T> /* ATTENTION: We should check that T is strictly numeric */
+inline void printMat(const T* M, int rows, int cols)
 {
   for (int i = 0; i < rows; i++)
   {
