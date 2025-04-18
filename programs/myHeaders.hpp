@@ -4,13 +4,35 @@
 #include <cstdio>
 #include <cmath>
 
+extern int PRINT_DEBUG;
+
 int getBellParams(torch::Tensor& A,         /* in */
                   int x,                    /* in */
                   int y,                    /* in */
                   int& ellBlockSize,        /* out */
                   int& ellCols,             /* out */
                   int*& ellColInd,          /* out */
-                  float*& ellValue);        /* out */
+                  float*& ellValue          /* out */);
+
+int computeZeroBlocks(torch::Tensor& A,  /* in */
+                      int kernelSize     /* in */);
+
+torch::Tensor computeEllCols(torch::Tensor& A,  /* in */
+                             int rows,          /* in */
+                             int cols,          /* in */
+                             int kernelSize     /* in */);
+
+void getEllColInd(torch::Tensor& bSums, /* in */
+                  int* ellColInd,       /* in */
+                  int rows,             /* in */
+                  int cols              /* in */);
+
+void getEllValues(torch::Tensor& A, /* in */
+                  float *ellValue,  /* in */
+                  int *ellColInd,   /* in */
+                  int rows,         /* in */
+                  int cols,         /* in */
+                  int ellBlockSize  /* in */);
 
 /**
  * @brief Prints the values stored in a two dimensional tensor of size (x,y)

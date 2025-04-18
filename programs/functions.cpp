@@ -43,78 +43,85 @@ void getEllColInd(torch::Tensor& bSums, int* ellColInd, int rows, int cols)
   float val;
 
   std::vector<float*> rowPointers(rows);
-# pragma omp parallel for
-  for (int i = 0; i < rows; ++i)
+# pragma omp parallel shared(ellColInd) private(idx, rowSize, val)
   {
-    rowPointers[i] = bSums[i].contiguous().data_ptr<float>();
-  }
-
-# pragma omp parallel for shared(ellColInd) private(idx, rowSize, val)
-  for (int i = 0; i < rows; ++i)
-  {
-    idx = 0;
-    rowSize = 0;
-    int* row = (int*) malloc(cols*sizeof(int));
-    float* bSumsRow = rowPointers[i];
-    for (int j = 0; j < bSums.size(1); ++j)
+#   pragma omp for
+    for (int i = 0; i < rows; ++i)
     {
-      val = bSumsRow[j];
-      if (val != 0)
-      {
-        rowSize += 1;
-        row[idx] = j;
-        idx++;
-      }
+      rowPointers[i] = bSums[i].contiguous().data_ptr<float>();
     }
-    for (int j = 0; j < cols; ++j)
+
+#   pragma omp for
+    for (int i = 0; i < rows; ++i)
     {
-      if (j < rowSize)
+      idx = 0;
+      rowSize = 0;
+      int* row = (int*) malloc(cols*sizeof(int));
+      float* bSumsRow = rowPointers[i];
+      for (int j = 0; j < bSums.size(1); ++j)
       {
-        ellColInd[i*cols + j] = row[j];
-      } else
-      {
-        ellColInd[i*cols + j] = -1;
-      }
-    }
-    free(row);
-  }
-}
-
-void getEllValues(torch::Tensor& A, float *ellValue, int *ellColInd, int rows, int cols, int ellBlockSize)
-{
-  /* This lambda gives the blocked ellpack values array */
-  int blockCol, dstIndex, rowIndex, colIndex;
-  std::vector<float*> rowPointers(rows * ellBlockSize);
-
-# pragma omp parallel for
-  for (int i = 0; i < rows * ellBlockSize; ++i)
-  {
-    rowPointers[i] = A[i].contiguous().data_ptr<float>();
-  }
-
-# pragma omp parallel for collapse(2) private(blockCol, dstIndex, rowIndex, colIndex)
-  for (int i = 0; i < rows; ++i)
-  {
-    for (int j = 0; j < cols; ++j)
-    {
-      blockCol = ellColInd[i * cols + j];
-      for (int bi = 0; bi < ellBlockSize; ++bi)
-      {
-        rowIndex = i * ellBlockSize + bi;
-        float* rowA = rowPointers[rowIndex];
-        int srcOffset = ellBlockSize * blockCol;
-        int dstOffset = ((i * cols + j) * ellBlockSize + bi) * ellBlockSize;
-        if (blockCol != -1)
+        val = bSumsRow[j];
+        if (val != 0)
         {
-          memcpy(&ellValue[dstOffset], &rowA[srcOffset], ellBlockSize * sizeof(float));
-        } else
-        {
-          std::fill(&ellValue[dstOffset], &ellValue[dstOffset + ellBlockSize], 0.0f);
+          rowSize += 1;
+          row[idx] = j;
+          idx++;
         }
       }
+      for (int j = 0; j < cols; ++j)
+      {
+        if (j < rowSize)
+        {
+          ellColInd[i*cols + j] = row[j];
+        } else
+        {
+          ellColInd[i*cols + j] = -1;
+        }
+      }
+      free(row);
     }
   }
 }
+
+
+// void getEllValues(torch::Tensor& A, float *ellValue, int *ellColInd, int rows, int cols, int ellBlockSize)
+// {
+//   /* This lambda gives the blocked ellpack values array */
+//   int blockCol, dstIndex, rowIndex, colIndex;
+//   std::vector<float*> rowPointers(rows * ellBlockSize);
+//
+// # pragma omp parallel private(blockCol, dstIndex, rowIndex, colIndex)
+//   {
+// #   pragma omp for
+//     for (int i = 0; i < rows * ellBlockSize; ++i)
+//     {
+//       rowPointers[i] = A[i].contiguous().data_ptr<float>();
+//     }
+//
+// #   pragma omp for collapse(2)
+//     for (int i = 0; i < rows; ++i)
+//     {
+//       for (int j = 0; j < cols; ++j)
+//       {
+//         blockCol = ellColInd[i * cols + j];
+//         for (int bi = 0; bi < ellBlockSize; ++bi)
+//         {
+//           rowIndex = i * ellBlockSize + bi;
+//           float* rowA = rowPointers[rowIndex];
+//           int srcOffset = ellBlockSize * blockCol;
+//           int dstOffset = ((i * cols + j) * ellBlockSize + bi) * ellBlockSize;
+//           if (blockCol != -1)
+//           {
+//             memcpy(&ellValue[dstOffset], &rowA[srcOffset], ellBlockSize * sizeof(float));
+//           } else
+//           {
+//             std::fill(&ellValue[dstOffset], &ellValue[dstOffset + ellBlockSize], 0.0f);
+//           }
+//         }
+//       }
+//     }
+//   }
+// }
 
 /**
  * @brief Find the block size that filters out the most zeroes
@@ -154,42 +161,42 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
    */
 
 
-//   auto getEllValues = [&](torch::Tensor& A, float *ellValue, int *ellColInd) -> void
-//   {
-//     /* This lambda gives the blocked ellpack values array */
-//     int blockCol, dstIndex, rowIndex, colIndex;
-//
-//     std::vector<float*> rowPointers(rows * ellBlockSize);
-//
-// #   pragma omp parallel for
-//     for (int i = 0; i < rows * ellBlockSize; ++i)
-//     {
-//       rowPointers[i] = A[i].contiguous().data_ptr<float>();
-//     }
-//
-// #   pragma omp parallel for collapse(2) private(blockCol, dstIndex, rowIndex, colIndex)
-//     for (int i = 0; i < rows; ++i)
-//     {
-//       for (int j = 0; j < cols; ++j)
-//       {
-//         blockCol = ellColInd[i * cols + j];
-//         for (int bi = 0; bi < ellBlockSize; ++bi)
-//         {
-//           rowIndex = i * ellBlockSize + bi;
-//           float* rowA = rowPointers[rowIndex];
-//           int srcOffset = ellBlockSize * blockCol;
-//           int dstOffset = ((i * cols + j) * ellBlockSize + bi) * ellBlockSize;
-//           if (blockCol != -1)
-//           {
-//             memcpy(&ellValue[dstOffset], &rowA[srcOffset], ellBlockSize * sizeof(float));
-//           } else
-//           {
-//             std::fill(&ellValue[dstOffset], &ellValue[dstOffset + ellBlockSize], 0.0f);
-//           }
-//         }
-//       }
-//     }
-//   };
+  auto getEllValues = [&](torch::Tensor& A, float *ellValue, int *ellColInd) -> void
+  {
+    /* This lambda gives the blocked ellpack values array */
+    int blockCol, dstIndex, rowIndex, colIndex;
+
+    std::vector<float*> rowPointers(rows * ellBlockSize);
+
+#   pragma omp parallel for
+    for (int i = 0; i < rows * ellBlockSize; ++i)
+    {
+      rowPointers[i] = A[i].contiguous().data_ptr<float>();
+    }
+
+#   pragma omp parallel for collapse(2) private(blockCol, dstIndex, rowIndex, colIndex)
+    for (int i = 0; i < rows; ++i)
+    {
+      for (int j = 0; j < cols; ++j)
+      {
+        blockCol = ellColInd[i * cols + j];
+        for (int bi = 0; bi < ellBlockSize; ++bi)
+        {
+          rowIndex = i * ellBlockSize + bi;
+          float* rowA = rowPointers[rowIndex];
+          int srcOffset = ellBlockSize * blockCol;
+          int dstOffset = ((i * cols + j) * ellBlockSize + bi) * ellBlockSize;
+          if (blockCol != -1)
+          {
+            memcpy(&ellValue[dstOffset], &rowA[srcOffset], ellBlockSize * sizeof(float));
+          } else
+          {
+            std::fill(&ellValue[dstOffset], &ellValue[dstOffset + ellBlockSize], 0.0f);
+          }
+        }
+      }
+    }
+  };
   /*
    *
    * END LAMBDA DEFINITIONS
@@ -269,7 +276,8 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
   tStart = omp_get_wtime();
   /* Create the ellValue array */
   ellValue = (float*) malloc((rows*cols*ellBlockSize*ellBlockSize)*sizeof(float));
-  getEllValues(A, ellValue, ellColInd, rows, cols, ellBlockSize);
+  // getEllValues(A, ellValue, ellColInd, rows, cols, ellBlockSize);
+  getEllValues(A, ellValue, ellColInd);
   tEnd = omp_get_wtime();
   printf("getEllValues time: %f\n", tEnd - tStart);
   end = omp_get_wtime();
