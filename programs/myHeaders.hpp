@@ -23,7 +23,7 @@ torch::Tensor computeEllCols(torch::Tensor& A,  /* in */
                              int kernelSize     /* in */);
 
 void getEllColInd(torch::Tensor& bSums, /* in */
-                  int* ellColInd,       /* in */
+                  int* ellColInd,       /* out */
                   int rows,             /* in */
                   int cols              /* in */);
 
@@ -99,13 +99,6 @@ inline void printMat(const T* M, int rows, int cols)
   }
 }
 
-/**
- * @brief Determines whether a number is prime or not
- *
- * @param x The number that we need to check
- *
- * @return 1 if x is prime, 0 otherwise
- */
 static inline void printEllValue(float* ellValue, int rows, int cols, int kernelSize) {
   for (int i = 0; i < rows * kernelSize; ++i) {
     for (int j = 0; j < cols * kernelSize; ++j) {
