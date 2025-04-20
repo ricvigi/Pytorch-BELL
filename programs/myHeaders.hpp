@@ -15,7 +15,14 @@ int getBellParams(torch::Tensor& A,         /* in */
                   float*& ellValue          /* out */);
 
 int computeZeroBlocks(torch::Tensor& A,  /* in */
+                      int rows,          /* in */
+                      int cols,          /* in */
                       int kernelSize     /* in */);
+
+int iterativeComputeZeroBlocks(torch::Tensor& A,  /* in */
+                               int rows,          /* in */
+                               int cols,          /* in */
+                               int kernelSize     /* in */);
 
 torch::Tensor computeEllCols(torch::Tensor& A,  /* in */
                              int rows,          /* in */

@@ -28,6 +28,21 @@ int computeZeroBlocks(torch::Tensor &A, int rows, int cols, int kernelSize)
 }
 
 /**
+ * @brief Computes the number of zero blocks of size kernelSize in tensor A with an iterative approach, i.e. without calling pytorch's API
+ *
+ * @param &A Reference to the tensor
+ * @param rows Size of the first dimension of A
+ * @param cols Size of the second dimension of A
+ * @param kernelSize Size of the blocks (square)
+ *
+ * @return int, the number of zero blocks of size kernelSize x kernelSize in tensor A
+ */
+int iterativeComputeZeroBlocks(torch::Tensor &A, int rows, int cols, int kernelSize)
+{
+  return 0;
+}
+
+/**
  * @brief Computes the number of zero blocks of size kernelSize in tensor A
  *
  * @param &A Reference to the tensor
@@ -50,7 +65,7 @@ torch::Tensor computeEllCols(torch::Tensor& A, int rows, int cols, int kernelSiz
 }
 
 /**
- * @brief Computes the size of ellColInd array, i.e. the array that stores the index of the column position of all non-zero elements in A. If a row has < ellCols non-zero elements, the remaining elements in the rows will be set to -1
+ * @brief Computes ellColInd array, i.e. the array that stores the index of the column position of all non-zero elements in A. If a row has < ellCols non-zero elements, the remaining elements in the rows will be set to -1
  *
  * @param &bSums Tensor that contains the sum of all elements in each ellBlockSize size of the original tensor
  * @param *ellColInd Pointer to the array that will store the index of the column position of all non-zero elements in A. This is our return value
@@ -105,10 +120,20 @@ void getEllColInd(torch::Tensor &bSums, int *ellColInd, int rows, int cols)
   }
 }
 
-
+/**
+ * @brief Computes the blocked ellpack values array
+ *
+ * @param &A Reference to the tensor we have to transform
+ * @param *ellValue Pointer to the array that will contain the blocked ell representation
+ * @param *ellColInd Pointer to the indices array
+ * @param rows Size of the first dimension of A, divided by ellBlockSize
+ * @param cols Size of the second dimension of A, divided by ellBlockSize
+ * @param ellBlockSize size of the blocks
+ *
+ * @return void. The return value of this function is ellValue
+ */
 void getEllValues(torch::Tensor& A, float *ellValue, int *ellColInd, int rows, int cols, int ellBlockSize)
 {
-  /* This lambda gives the blocked ellpack values array */
   int blockCol, dstIndex, rowIndex, colIndex;
   std::vector<float*> rowPointers(rows * ellBlockSize);
 
@@ -178,59 +203,11 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
 
   /*
    *
-   * START LAMBDA DEFINITIONS
-   *
-   */
-//   auto getEllValues = [&](torch::Tensor& A, float *ellValue, int *ellColInd) -> void
-//   {
-//     /* This lambda gives the blocked ellpack values array */
-//     int blockCol, dstIndex, rowIndex, colIndex;
-//
-//     std::vector<float*> rowPointers(rows * ellBlockSize);
-//
-// #   pragma omp parallel for
-//     for (int i = 0; i < rows * ellBlockSize; ++i)
-//     {
-//       rowPointers[i] = A[i].contiguous().data_ptr<float>();
-//     }
-//
-// #   pragma omp parallel for collapse(2) private(blockCol, dstIndex, rowIndex, colIndex)
-//     for (int i = 0; i < rows; ++i)
-//     {
-//       for (int j = 0; j < cols; ++j)
-//       {
-//         blockCol = ellColInd[i * cols + j];
-//         for (int bi = 0; bi < ellBlockSize; ++bi)
-//         {
-//           rowIndex = i * ellBlockSize + bi;
-//           float* rowA = rowPointers[rowIndex];
-//           int srcOffset = ellBlockSize * blockCol;
-//           int dstOffset = ((i * cols + j) * ellBlockSize + bi) * ellBlockSize;
-//           if (blockCol != -1)
-//           {
-//             memcpy(&ellValue[dstOffset], &rowA[srcOffset], ellBlockSize * sizeof(float));
-//           } else
-//           {
-//             std::fill(&ellValue[dstOffset], &ellValue[dstOffset + ellBlockSize], 0.0f);
-//           }
-//         }
-//       }
-//     }
-//   };
-  /*
-   *
-   * END LAMBDA DEFINITIONS
-   *
-   */
-
-  /*
-   *
    * START PROGRAM
    *
    */
 
   /* Get the optimal kernelSize value. It gets stored in variable ellBlockSize */
-  start = INFINITY;
   ellCols = 0;
   ellBlockSize = 0;
   zeroCount = 0;
@@ -245,39 +222,36 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
   std::vector<int> localZeroCount(nThreads);
   std::vector<int> localKernels(nThreads);
 
+  start = omp_get_wtime();
   tStart = omp_get_wtime();
-# pragma omp parallel shared(maxZeroBlocks, zeroCount, ellBlockSize, localZeroCount) reduction(min:start)
+# pragma omp parallel shared(maxZeroBlocks, zeroCount, ellBlockSize, localZeroCount)
   {
-    int localKernelSize, localZeroBlocks, localNZeroes, id;
-    float localStart = omp_get_wtime();
-    start = localStart;
+    int localKernelSize, localZeroBlocks, localNZeroes, localBestZeroes, localMaxZeroBlocks, localBestKernel, id;
     id = omp_get_thread_num();
+    localBestZeroes = 0;
     /* Loop is reversed because we try to balance work better. NOTE: This should become
      * effective only when we are working with very big dimensions. */
 #   pragma omp for
-    for (i = divisorsSize - 1; i >= 0; --i )
+    for (i = 0; i < divisorsSize; ++i )
     {
       localKernelSize = divisors[i];
       localZeroBlocks = computeZeroBlocks(A, x, y, localKernelSize);
       if (localZeroBlocks > 0)
       {
         localNZeroes = localZeroBlocks * localKernelSize * localKernelSize;
-// #       pragma omp critical
-//         {
-//           if (zeroCount < localNZeroes)
-//           {
-//             maxZeroBlocks = localZeroBlocks;
-//             zeroCount = localNZeroes;
-//             ellBlockSize = localKernelSize;
-//           }
-//         }
-        localZeroCount[id] = localNZeroes;
-        localKernels[id] = localKernelSize;
+        if (localBestZeroes < localNZeroes)
+        {
+          localMaxZeroBlocks = localZeroBlocks;
+          localBestZeroes = localNZeroes;
+          localBestKernel = localKernelSize;
+        }
       } else
       {
         continue;
       }
     }
+    localZeroCount[id] = localBestZeroes;
+    localKernels[id] = localBestKernel;
   }
 
   int z, k;
@@ -332,6 +306,7 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
    * END PROGRAM
    *
    */
+
   if (PRINT_DEBUG)
   {
     std::cout << A << std::endl;
@@ -339,6 +314,7 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
     printMat(ellColInd, rows, cols);
     printEllValue(ellValue, rows, cols, ellBlockSize);
   }
+
   printf("We can filter out %d zeroes with a kernel of size %d\n", zeroCount, ellBlockSize);
   printf("Matrix has %d zero blocks of size %d\n", maxZeroBlocks, ellBlockSize);
   printf("Total time needed for computation: %7.6f\n", end - start);

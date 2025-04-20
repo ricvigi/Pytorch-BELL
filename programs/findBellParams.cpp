@@ -16,14 +16,18 @@ int main(int argc, char** argv)
     return EXIT_FAILURE;
   }
   int x, y, ellBlockSize, ellCols, err;
-  float threshold, *ellValue;
+  float threshold;
   torch::Tensor A, B, bSums;
+
   int *ellColInd = nullptr;
+  float *ellValue = nullptr;
 
   x = atoi(argv[1]);
   y = atoi(argv[2]);
   threshold = atof(argv[3]);
   PRINT_DEBUG = atoi(argv[4]);
+
+  torch::manual_seed(42);
 
   A = torch::randn({x, y});
   A.masked_fill_(A < threshold, 0);
