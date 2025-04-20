@@ -141,10 +141,12 @@ static inline int findDivisors(int x, int*& divisors)
     {
 #     pragma omp critical
       {
-        size += 1;
+        ++size;
         divisors = (int*) realloc(divisors, sizeof(int)*size);
       }
+
       divisors[size - 1] = i;
+
     }
   }
   return size;

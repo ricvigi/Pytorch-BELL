@@ -28,7 +28,7 @@ int computeZeroBlocks(torch::Tensor &A, int rows, int cols, int kernelSize)
 }
 
 /**
- * @brief Computes the number of zero blocks of size kernelSize in tensor A with an iterative approach, i.e. without calling pytorch's API
+ * @brief Computes the number of zero blocks of size kernelSize in tensor A with an iterative approach, i.e. without calling pytorch's API. It's roughly four times quicker than its API counterpart.
  *
  * @param &A Reference to the tensor
  * @param rows Size of the first dimension of A
@@ -50,7 +50,6 @@ int iterativeComputeZeroBlocks(torch::Tensor &A, int rows, int cols, int kernelS
     {
       rowPointers[i] = A[i].contiguous().data_ptr<float>();
     }
-
 #   pragma omp for collapse(2) reduction(+:count)
     for (int i = 0; i < nBlocksH; ++i)
     {
@@ -98,6 +97,48 @@ torch::Tensor computeEllCols(torch::Tensor& A, int rows, int cols, int kernelSiz
   bSums = B.sum({2,3});
   return bSums;
 }
+
+torch::Tensor iterativeComputeEllCols(torch::Tensor& A, int rows, int cols, int kernelSize)
+{
+  int nBlocksH = rows / kernelSize;
+  int nBlocksW = cols / kernelSize;
+  torch::Tensor bSums;
+  float* tBSums;
+  tBSums = (float*) malloc(rows*cols*sizeof(float));
+  std::vector<float*> rowPointers (rows);
+
+# pragma omp parallel
+  {
+#   pragma omp for
+    for (int i = 0; i < rows; ++i)
+    {
+      rowPointers[i] = A[i].contiguous().data_ptr<float>();
+    }
+#   pragma omp for collapse(2)
+    for (int i = 0; i < nBlocksH; ++i)
+    {
+      for (int j = 0; j < nBlocksW; ++j)
+      {
+        float sum = 0.0f;
+        for (int ii = 0; ii < kernelSize; ++ii)
+        {
+          for (int jj = 0; jj < kernelSize; ++jj)
+          {
+            int row = i * kernelSize + ii;
+            int col = j * kernelSize + jj;
+            float val = rowPointers[row][col];
+            sum += val;
+          }
+        }
+        tBSums[i * kernelSize + j] = sum;
+      }
+    }
+  }
+  bSums = torch::from_blob(tBSums, {rows, cols}, torch::kFloat32).clone();
+  free(tBSums);
+  return bSums;
+}
+
 
 /**
  * @brief Computes ellColInd array, i.e. the array that stores the index of the column position of all non-zero elements in A. If a row has < ellCols non-zero elements, the remaining elements in the rows will be set to -1
@@ -220,8 +261,12 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
 {
   /* Variable declarations */
   int i, j, kernelSize, zeroBlocks, maxZeroBlocks, zeroCount, nZeroes, *divisors, divisorsSize, rows, cols, size, colIdx, nThreads;
-  float start, end;
-  torch::Tensor bSums, block;
+  float start, end, tStart, tEnd;
+  torch::Tensor bSums;
+
+  /* ATTENTION: This instruction allows nested parallelism. Right now it improves performance, but i'm
+   * not sure why :/... */
+  omp_set_nested(1);
 
   /* Matrix sizes checks */
   if (x != y)
@@ -242,7 +287,7 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
    *
    */
 
-  /* Get the optimal kernelSize value. It gets stored in variable ellBlockSize */
+  /* The optimal block size shape will be stored in ellBlockSize. */
   ellCols = 0;
   ellBlockSize = 0;
   zeroCount = 0;
@@ -252,7 +297,6 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
   nThreads = std::min(divisorsSize, omp_get_num_procs());
   omp_set_num_threads(nThreads);
   printf("divisorsSize: %d\n", divisorsSize);
-  float tStart, tEnd;
 
   std::vector<int> localZeroCount(nThreads);
   std::vector<int> localKernels(nThreads);
@@ -264,13 +308,12 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
     int localKernelSize, localZeroBlocks, localNZeroes, localBestZeroes, localMaxZeroBlocks, localBestKernel, id;
     id = omp_get_thread_num();
     localBestZeroes = 0;
-    /* Loop is reversed because we try to balance work better. NOTE: This should become
-     * effective only when we are working with very big dimensions. */
+
+    /* NOTE: Should be use a guided schedule for this loop parallelism? */
 #   pragma omp for
-    for (i = 0; i < divisorsSize; ++i )
+    for (i = 0; i < divisorsSize; ++i)
     {
       localKernelSize = divisors[i];
-      // localZeroBlocks = computeZeroBlocks(A, x, y, localKernelSize);
       localZeroBlocks = iterativeComputeZeroBlocks(A, x, y, localKernelSize);
       if (localZeroBlocks > 0)
       {
@@ -290,6 +333,7 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
     localKernels[id] = localBestKernel;
   }
 
+  /* Get the best block size value */
   int z, k;
   for (int i = 0; i < nThreads; ++i)
   {
@@ -313,6 +357,7 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
   tStart = omp_get_wtime();
   /* Now get ellCols, the actual number of columns in the BELL format */
   bSums = computeEllCols(A, x, y, ellBlockSize);
+  // bSums = iterativeComputeEllCols(A, x, y, ellBlockSize);
   ellCols = (bSums != 0).sum(1).max().item<int>();
   tEnd = omp_get_wtime();
   printf("computeEllCols time: %f\n", tEnd - tStart);
