@@ -52,9 +52,9 @@ void getEllValues(torch::Tensor& A, /* in */
  */
 static inline void printTensor(const torch::Tensor &A, int x, int y)
 {
-  for (int i = 0; i < x; i++)
+  for (int i = 0; i < x; ++i)
   {
-    for (int j = 0; j < y; j++)
+    for (int j = 0; j < y; ++j)
     {
       printf("%7.4f ", A.index({i, j}).item<float>());
     }
@@ -69,11 +69,11 @@ static inline void printTensor(const torch::Tensor &A, int x, int y)
  *
  * @return 1 if x is prime, 0 otherwise
  */
-static int isPrime(const int x)
+static inline int isPrime(const int x)
 {
   int root = (int) sqrt(x);
   int prime = 1;
-  for (int i = 2; i <= root; i++)
+  for (int i = 2; i <= root; ++i)
   {
     if ((x % i) == 0)
     {
@@ -96,9 +96,9 @@ static int isPrime(const int x)
 template <typename T> /* ATTENTION: We should check that T is strictly numeric */
 inline void printMat(const T* M, int rows, int cols)
 {
-  for (int i = 0; i < rows; i++)
+  for (int i = 0; i < rows; ++i)
   {
-    for (int j = 0; j < cols; j++)
+    for (int j = 0; j < cols; ++j)
     {
       std::cout << M[i * cols + j] << " ";
     }
@@ -130,12 +130,12 @@ static inline void printEllValue(float* ellValue, int rows, int cols, int kernel
  *
  * @return The size of the array of integers that stores all the found divisors of x
  */
-static int findDivisors(int x, int*& divisors)
+static inline int findDivisors(int x, int*& divisors)
 {
   int size = 0;
   int i;
 # pragma omp parallel for schedule(static, 1)
-  for (i = 2; i <= (x / 2); i++) /* With normal iteration the result array is naturally sorted */
+  for (i = 2; i <= (x / 2); ++i) /* With normal iteration the result array is naturally sorted */
   {
     if (x % i == 0)
     {

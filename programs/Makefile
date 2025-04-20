@@ -1,5 +1,6 @@
 CXX = g++
-CXXFLAGS = -g -fopenmp -std=c++17
+# CXXFLAGS = -g -fopenmp -std=c++17
+CXXFLAGS = -O3 -march=core2 -mavx2 -mfma -fopenmp -std=c++17
 LDFLAGS = -Llibtorch/lib -Wl,-rpath,libtorch/lib
 INCLUDES = -Ilibtorch/include -Ilibtorch/include/torch/csrc/api/include
 LIBS = -ltorch -ltorch_cpu -lc10

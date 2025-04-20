@@ -39,7 +39,42 @@ int computeZeroBlocks(torch::Tensor &A, int rows, int cols, int kernelSize)
  */
 int iterativeComputeZeroBlocks(torch::Tensor &A, int rows, int cols, int kernelSize)
 {
-  return 0;
+  int count = 0;
+  int nBlocksH = rows / kernelSize;
+  int nBlocksW = cols / kernelSize;
+  std::vector<float*> rowPointers (rows);
+# pragma omp parallel
+  {
+#   pragma omp for
+    for (int i = 0; i < rows; ++i)
+    {
+      rowPointers[i] = A[i].contiguous().data_ptr<float>();
+    }
+
+#   pragma omp for collapse(2) reduction(+:count)
+    for (int i = 0; i < nBlocksH; ++i)
+    {
+      for (int j = 0; j < nBlocksW; ++j)
+      {
+        bool isZeroBlock = true;
+        for (int ii = 0; ii < kernelSize && isZeroBlock; ++ii)
+        {
+          for (int jj = 0; jj < kernelSize; ++jj)
+          {
+            int row = i * kernelSize + ii;
+            int col = j * kernelSize + jj;
+            if (rowPointers[row][col] != 0.0f)
+            {
+              isZeroBlock = false;
+              break;
+            }
+          }
+        }
+        if (isZeroBlock) count++;
+      }
+    }
+  }
+  return count;
 }
 
 /**
@@ -235,7 +270,8 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
     for (i = 0; i < divisorsSize; ++i )
     {
       localKernelSize = divisors[i];
-      localZeroBlocks = computeZeroBlocks(A, x, y, localKernelSize);
+      // localZeroBlocks = computeZeroBlocks(A, x, y, localKernelSize);
+      localZeroBlocks = iterativeComputeZeroBlocks(A, x, y, localKernelSize);
       if (localZeroBlocks > 0)
       {
         localNZeroes = localZeroBlocks * localKernelSize * localKernelSize;
