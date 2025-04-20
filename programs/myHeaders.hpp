@@ -69,7 +69,7 @@ static inline void printTensor(const torch::Tensor &A, int x, int y)
  *
  * @return 1 if x is prime, 0 otherwise
  */
-static inline int isPrime(const int x)
+static int isPrime(const int x)
 {
   int root = (int) sqrt(x);
   int prime = 1;
@@ -130,7 +130,7 @@ static inline void printEllValue(float* ellValue, int rows, int cols, int kernel
  *
  * @return The size of the array of integers that stores all the found divisors of x
  */
-static inline int findDivisors(int x, int*& divisors)
+static int findDivisors(int x, int*& divisors)
 {
   int size = 0;
   int i;
