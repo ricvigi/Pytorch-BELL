@@ -4,7 +4,7 @@ This repository contains the code, experiments, and documentation for my thesis 
 
 ## Thesis Overview
 
-Modern machine learning workloads often deal with large sparse matrices, but efficient support for custom sparse formats in PyTorch is still limited. This project introduces and integrates a new sparse format — **Blocked ELLPACK (BELL)** — into the PyTorch ecosystem.
+Modern machine learning workloads often deal with large sparse matrices, but efficient support for custom sparse formats in PyTorch is still limited. This project introduces — **Blocked ELLPACK (BELL)** — format into the PyTorch ecosystem.
 
 ### Goal
 
