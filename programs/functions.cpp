@@ -1,3 +1,24 @@
+/*
+ * ---------------------------------------------------------------------------------------
+ * Project     : Pytorch-BELL support
+ * File        : functions.cpp
+ * Author      : Riccardo Inverardi Galli
+ * License     : MIT License (see LICENSE file)
+ *
+ * License Summary : THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND,
+ *                   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ *                   OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ *                   IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ *                   CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ *                   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ *                   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * Description: This file contains functions whose purpose is to extract the necessary
+ *              parameters that can be passed to the cuSPARSE API in order to create a
+ *              BLOCKED-ELL sparse matrix object.
+ * ----------------------------------------------------------------------------------------
+ */
+
 #include <torch/torch.h>
 #include <omp.h>
 #include <iostream>
@@ -312,7 +333,7 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
     id = omp_get_thread_num();
     localBestZeroes = 0;
 
-    /* NOTE: Should be use a guided schedule for this loop parallelism? */
+    /* NOTE: Should we use a guided schedule for this loop parallelism? */
 #   pragma omp for
     for (i = 0; i < divisorsSize; ++i)
     {
