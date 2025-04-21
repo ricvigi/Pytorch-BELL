@@ -2,7 +2,6 @@
  * ---------------------------------------------------------------------------------------
  * Project     : Pytorch-BELL support
  * File        : findBellParams.cpp
- * Author      : Riccardo Inverardi Galli
  * License     : MIT License (see LICENSE file)
  *
  * License Summary : THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND,

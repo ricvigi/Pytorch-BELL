@@ -2,7 +2,6 @@
  * ---------------------------------------------------------------------------------------
  * Project     : Pytorch-BELL support
  * File        : functions.cpp
- * Author      : Riccardo Inverardi Galli
  * License     : MIT License (see LICENSE file)
  *
  * License Summary : THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND,
@@ -119,6 +118,16 @@ torch::Tensor computeEllCols(torch::Tensor& A, int rows, int cols, int kernelSiz
   return bSums;
 }
 
+/**
+ * @brief Iterative version of computeEllCols. Computes the number of zero blocks of size kernelSize in tensor A
+ *
+ * @param &A Reference to the tensor
+ * @param rows Size of the first dimension of A
+ * @param cols Size of the second dimension of A
+ * @param kernelSize Size of the blocks (square)
+ *
+ * @return returns a torch::Tensor object, that stores the sum of the values of all blocks of size kernelSize x kernelSize in A. From this object we will compute ellCols, but since we need it elsewhere, we return this object instead
+ */
 torch::Tensor iterativeComputeEllCols(torch::Tensor& A, int rows, int cols, int kernelSize)
 {
   int nBlocksH = rows / kernelSize;
@@ -288,8 +297,12 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
   float start, end, tStart, tEnd;
   torch::Tensor bSums;
 
-  /* ATTENTION: This instruction allows nested parallelism. Right now it improves performance, but i'm
-   * not sure why :/... */
+  /*
+   * ATTENTION: This instruction allows nested parallelism. Right now it improves performance, but i'm
+   * not sure why :/...
+   * If you remove this, or set it to 0, all calls to functions that contain parallel regions, if called
+   * inside a parallel region, will be executed sequentially
+   */
   omp_set_nested(1);
 
   /* Matrix sizes checks */
