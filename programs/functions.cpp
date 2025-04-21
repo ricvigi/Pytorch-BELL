@@ -106,6 +106,7 @@ torch::Tensor iterativeComputeEllCols(torch::Tensor& A, int rows, int cols, int 
   float* tBSums;
   tBSums = (float*) malloc(rows*cols*sizeof(float));
   std::vector<float*> rowPointers (rows);
+  auto del = [](void* ptr) { free(ptr); };
 
 # pragma omp parallel
   {
@@ -134,8 +135,10 @@ torch::Tensor iterativeComputeEllCols(torch::Tensor& A, int rows, int cols, int 
       }
     }
   }
-  bSums = torch::from_blob(tBSums, {rows, cols}, torch::kFloat32).clone();
-  free(tBSums);
+  // bSums = torch::from_blob(tBSums, {rows, cols}, torch::kFloat32).clone();
+  // free(tBSums);
+  bSums = torch::from_blob(tBSums, {rows, cols}, del, torch::TensorOptions().dtype(torch::kFloat32)
+);
   return bSums;
 }
 
