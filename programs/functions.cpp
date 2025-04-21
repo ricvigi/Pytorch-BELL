@@ -1,6 +1,5 @@
 /*
  * ---------------------------------------------------------------------------------------
- * Project     : Pytorch-BELL support
  * File        : functions.cpp
  * License     : MIT License (see LICENSE file)
  *
@@ -340,9 +339,9 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
 
   start = omp_get_wtime();
   tStart = omp_get_wtime();
-# pragma omp parallel shared(maxZeroBlocks, zeroCount, ellBlockSize, localZeroCount)
+# pragma omp parallel shared(zeroCount, ellBlockSize, localZeroCount)
   {
-    int localKernelSize, localZeroBlocks, localNZeroes, localBestZeroes, localMaxZeroBlocks, localBestKernel, id;
+    int localKernelSize, localZeroBlocks, localNZeroes, localBestZeroes, localBestKernel, id;
     id = omp_get_thread_num();
     localBestZeroes = 0;
 
@@ -357,7 +356,6 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
         localNZeroes = localZeroBlocks * localKernelSize * localKernelSize;
         if (localBestZeroes < localNZeroes)
         {
-          localMaxZeroBlocks = localZeroBlocks;
           localBestZeroes = localNZeroes;
           localBestKernel = localKernelSize;
         }
@@ -434,7 +432,7 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
   }
 
   printf("We can filter out %d zeroes with a kernel of size %d\n", zeroCount, ellBlockSize);
-  printf("Matrix has %d zero blocks of size %d\n", maxZeroBlocks, ellBlockSize);
+  printf("Matrix has %d zero blocks of size %d\n", zeroCount / (ellBlockSize*ellBlockSize), ellBlockSize);
   printf("Total time needed for computation: %7.6f\n", end - start);
 
   free(divisors);

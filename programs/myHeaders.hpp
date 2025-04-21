@@ -1,6 +1,5 @@
 /*
  * ---------------------------------------------------------------------------------------
- * Project     : Pytorch-BELL support
  * File        : myHeaders.hpp
  * License     : MIT License (see LICENSE file)
  *

@@ -1,6 +1,5 @@
 /*
  * ---------------------------------------------------------------------------------------
- * Project     : Pytorch-BELL support
  * File        : findBellParams.cpp
  * License     : MIT License (see LICENSE file)
  *
