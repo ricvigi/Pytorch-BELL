@@ -14,7 +14,7 @@ To implement and evaluate **Blocked ELLPACK (BELL)** support in PyTorch for impr
 
 ##  Key Features
 
-- **BELL Format Support**: Blocked ELLPACK implementation in C++ using LibTorch (PyTorch C++ frontend).
+- **BELL Format Support**: Blocked ELLPACK implementation in C++ using LibTorch (PyTorch C++ frontend) and CUDA.
 - **Automatic Block Size Selection**: Heuristic that selects the optimal block size based on matrix structure.
 - **Performance Analysis**: Benchmarks against existing sparse formats (COO, CSR, etc.).
 - **Multithreading with OpenMP**: Optimized for parallel computation.
