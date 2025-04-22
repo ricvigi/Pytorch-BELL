@@ -37,8 +37,8 @@ int main(int argc, char** argv)
   float threshold;
   torch::Tensor A, B, bSums;
 
-  int *ellColInd = nullptr;
-  float *ellValue = nullptr;
+  int* ellColInd = nullptr;
+  float* ellValue = nullptr;
 
   x = atoi(argv[1]);
   y = atoi(argv[2]);
