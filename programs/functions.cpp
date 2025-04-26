@@ -171,7 +171,6 @@ torch::Tensor iterativeComputeEllCols(torch::Tensor& A, int rows, int cols, int 
   return bSums;
 }
 
-
 /**
  * @brief Computes ellColInd array, i.e. the array that stores the index of the column position of all non-zero elements in A. If a row has < ellCols non-zero elements, the remaining elements in the rows will be set to -1
  *
