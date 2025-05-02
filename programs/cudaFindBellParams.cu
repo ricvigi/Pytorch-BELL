@@ -21,9 +21,10 @@
 #include <cmath>
 #include <cuda.h>
 #include "myHeaders.hpp"
+#include "cudaHeaders.hpp"
 
 int main(int argc, char** argv)
 {
-
+  cGetDeviceProp<<<1,1>>>(points_d, centroids_d, classMap_d, changes_d);
   return EXIT_SUCCESS;
 }

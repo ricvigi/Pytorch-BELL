@@ -331,6 +331,7 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
   divisorsSize = findDivisors(x, divisors);
   nThreads = std::min(divisorsSize, omp_get_num_procs());
   omp_set_num_threads(nThreads);
+  // omp_set_num_threads(64);
   printf("divisorsSize: %d\n", divisorsSize);
 
   std::vector<int> localZeroCount(nThreads);

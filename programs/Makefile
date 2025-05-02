@@ -2,14 +2,14 @@ CXX = g++
 NVCC = nvcc
 # CXXFLAGS = -g -fopenmp -std=c++17
 # ATTENTION: watcha out for the -march=native flag!
+INCLUDES = -Ilibtorch/include -Ilibtorch/include/torch/csrc/api/include
+LIBS = -ltorch -ltorch_cpu -lc10
+
 CXXFLAGS = -O3 -march=native -mavx2 -mfma -fopenmp -std=c++17
 NVCCFLAGS = -O3 -std=c++17 -Wno-deprecated-gpu-targets $(INCLUDES)
 
 LDFLAGS = -Llibtorch/lib -Wl,-rpath,libtorch/lib
 CUDA_LDFLAGS = -Xlinker -rpath -Xlinker libtorch/lib -Llibtorch/lib
-
-INCLUDES = -Ilibtorch/include -Ilibtorch/include/torch/csrc/api/include
-LIBS = -ltorch -ltorch_cpu -lc10
 
 LIBTORCH = $(INCLUDES) $(LDFLAGS) $(LIBS)
 CUDA_LIBTORCH = $(INCLUDES) $(CUDA_LDFLAGS) $(LIBS)
