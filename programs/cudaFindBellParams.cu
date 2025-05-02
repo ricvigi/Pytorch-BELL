@@ -1,6 +1,6 @@
 /*
  * ---------------------------------------------------------------------------------------
- * File        : findBellParams.cu
+ * File        : cudaFindBellParams.cu
  * License     : MIT License (see LICENSE file)
  *
  * License Summary : THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND,
@@ -23,8 +23,21 @@
 #include "myHeaders.hpp"
 #include "cudaHeaders.hpp"
 
+
+
 int main(int argc, char** argv)
 {
-  cGetDeviceProp<<<1,1>>>(points_d, centroids_d, classMap_d, changes_d);
+  if (argc < 5)
+  {
+    printf("Usage: x, y, threshold, print debug\n");
+    fflush(stdout);
+    return EXIT_FAILURE;
+  }
+  int rows, cols;
+
+  rows = atoi(argv[1]);
+  cols = atoi(argv[2]);
+
+  cGetDeviceProp();
   return EXIT_SUCCESS;
 }

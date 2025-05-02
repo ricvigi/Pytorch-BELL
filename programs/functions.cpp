@@ -299,7 +299,7 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
    * ATTENTION: This instruction allows nested parallelism. Right now it improves performance, but i'm
    * not sure why :/...
    * If you remove this, or set it to 0, all calls to functions that contain parallel regions, if called
-   * inside a parallel region, will be executed sequentially
+   * inside a parallel region, will be executed sequentially.
    */
   omp_set_nested(1);
 
@@ -331,7 +331,6 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
   divisorsSize = findDivisors(x, divisors);
   nThreads = std::min(divisorsSize, omp_get_num_procs());
   omp_set_num_threads(nThreads);
-  // omp_set_num_threads(64);
   printf("divisorsSize: %d\n", divisorsSize);
 
   std::vector<int> localZeroCount(nThreads);

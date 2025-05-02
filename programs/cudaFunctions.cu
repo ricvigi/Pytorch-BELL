@@ -1,6 +1,6 @@
 /*
  * ---------------------------------------------------------------------------------------
- * File        : functions.cu
+ * File        : cudaFunctions.cu
  * License     : MIT License (see LICENSE file)
  *
  * License Summary : THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND,
@@ -14,6 +14,7 @@
  * Description:
  * ----------------------------------------------------------------------------------------
  */
+
 #include <cuda_runtime_api.h> // cudaMalloc, cudaMemcpy, etc.
 #include <cusparse.h>         // cusparseSpMM
 #include <cstdio>             // printf
@@ -23,22 +24,40 @@
 #include "cudaHeaders.hpp"
 #include "myHeaders.hpp"
 
-__global__
-void cGetBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCols, int*& ellColInd, float*& ellValue)
+/* Constants. ATTENTION: You MUST allocate these values with
+/* __host__​cudaError_t cudaMemcpyToSymbol ( const void* symbol, const void* src, size_t count, size_t offset = 0, cudaMemcpyKind kind = cudaMemcpyHostToDevice ) */
+__constant__ int rows_d;
+__constant__ int cols_d;
+
+void launch_cGetBellParams(torch::Tensor A, int *rows, int *cols)
 {
-  /* device variables */
-  float *A_d, *ellValue_d;
-  int *ellBlockSize_d, *ellCols_d, *ellColInd_d;
+  float *A_d, *A_h;
+  int A_size;
 
-  int A_size = A.numel();
+  A_size = *rows * *cols;
 
-  /* Get a pointer to the tensor */
-  float *A_h = A.contiguous().data_ptr<float>();
-
-  /* Device memory allocation */
+  A_h = A.contiguous().data_ptr<float>();
   CHECK_CUDA( cudaMalloc((void**) &A_d, A_size * sizeof(float)) )
-  CHECK_CUDA( cudaMemcpy(A_d, A_h, A_size * sizeof(float), cudaMemcpyHostToDevice) )
-  CHECK_CUDA( cudaMalloc((void**) &ellBlockSize_d, sizeof(int), cudaMemcpyHostToDevice) )
+
+  CHECK_CUDA( cudaMemcpyToSymbol(rows_d, rows, sizeof(int)) )
+  CHECK_CUDA( cudaMemcpyToSymbol(cols_d, cols, sizeof(int)) )
+}
+
+/**
+ * @brief Extract the parameters needed by cuSPARSE API to construct a BLOCKED-ELL object
+ *
+ * @param *A_d Pointer to the desired tensor in GPU memory.
+ * @param *ellBlockSize_d Pointer to integer that will stored the best block size.
+ * @param *ellCols_d Pointer to integer representing the maximum number of (ellBlockSize_d) columns in ellValue_d array.
+ * @param *ellColInd_d Pointer to array of integers containg indices of the blocked-ell array.
+ * @param *ellValue_d Pointer to values array after reordering.
+ *
+ * @return void
+ */
+__global__
+void cGetBellParams(float *A_d, int *ellBlockSize_d, int *ellCols_d, int *ellColInd_d, float *ellValue_d)
+{
+  /* TODO: Complete this... */
 }
 
 /**
@@ -46,27 +65,35 @@ void cGetBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellC
  *
  * @return void
  */
-__global__
 void cGetDeviceProp()
 {
   cudaDeviceProp prop;
-	CHECK_CUDA_CALL( cudaGetDevice(0) );
-	CHECK_CUDA_CALL( cudaGetDeviceProperties(&prop, 0) );
+  int deviceID = 0;
+	CHECK_CUDA( cudaGetDevice(&deviceID) );
+	CHECK_CUDA( cudaGetDeviceProperties(&prop, deviceID) );
+  printf("Device name: %s\n", prop.name);
 	printf("Max shared memory: %lu\n", prop.sharedMemPerBlock);
 	printf("Max threads per block: %d\n", prop.maxThreadsPerBlock);
 	printf("Max threads per SM: %d\n", prop.maxThreadsPerMultiProcessor);
 	printf("Concurrent Kernels: %s\n", prop.concurrentKernels ? "true" : "false");
 	printf("32 bit registers per SM: %d\n", prop.regsPerMultiprocessor);
 	printf("Shared memory per SM: %lu\n", prop.sharedMemPerMultiprocessor);
+  printf("MultiGPU board: %s\n", prop.isMultiGpuBoard ? "true" : "false");
+  printf("Max size of each grid dimension: %d\n", *prop.maxGridSize);
+  printf("Max size of each dimension of a block: %d\n", *prop.maxThreadsDim);
+  printf("Total global memory: %ld\n", (long) prop.totalGlobalMem);
+  printf("Total constant memory: %ld\n", (long) prop.totalConstMem);
+  printf("Unified addressing: %s\n", prop.unifiedAddressing ? "true" : "false");
 }
 
 
 __device__
-int cIterativeComputeZeroBlocks(float* A, int rows, int cols, int kernelSize)
+int cIterativeComputeZeroBlocks(float* A_d, int kernelSize)
 {
   int id = threadIdx.x + blockIdx.x * blockDim.x + ( blockIdx.y * blockDim.y + threadIdx.y ) * gridDim.x * blockDim.x + (blockIdx.z * blockDim.z + threadIdx.z) * gridDim.x * blockDim.x * gridDim.y * blockDim.y;
 
 	/* id of a thread inside a block */
 	int blockId = threadIdx.x;
+  return 0;
 }
 
