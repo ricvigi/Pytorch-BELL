@@ -17,19 +17,25 @@
 
 #include <cuda_runtime_api.h> // cudaMalloc, cudaMemcpy, etc.
 #include <cusparse.h>         // cusparseSpMM
-#include <cstdio>             // printf
+#include <cstdio>
 #include <iostream>
 #include <torch/torch.h>
 #include <omp.h>
 #include "cudaHeaders.hpp"
 #include "myHeaders.hpp"
 
-/* Constants. ATTENTION: You MUST allocate these values with
-/* __host__​cudaError_t cudaMemcpyToSymbol ( const void* symbol, const void* src, size_t count, size_t offset = 0, cudaMemcpyKind kind = cudaMemcpyHostToDevice ) */
+/* Constants. ATTENTION: You MUST allocate these values with cudaMemcpyToSymbol (...) */
 __constant__ int rows_d;
 __constant__ int cols_d;
+__constant__ int sharedMemPerBlock_d;
+__constant__ int maxThreadsPerBlock_d;
+__constant__ int maxThreadsPerSM_d;
+__constant__ int sharedMemPerSM_d;
+__constant__ int maxBlockDimSize_d;
+__constant__ int totalGlobalMem_d;
+__constant__ int totalConstantMem_d;
 
-void launch_cGetBellParams(torch::Tensor A, int *rows, int *cols)
+void launch_cGetBellParams (torch::Tensor A, int *rows, int *cols)
 {
   float *A_d, *A_h;
   int A_size;
@@ -55,7 +61,7 @@ void launch_cGetBellParams(torch::Tensor A, int *rows, int *cols)
  * @return void
  */
 __global__
-void cGetBellParams(float *A_d, int *ellBlockSize_d, int *ellCols_d, int *ellColInd_d, float *ellValue_d)
+void cGetBellParams (float *A_d, int *ellBlockSize_d, int *ellCols_d, int *ellColInd_d, float *ellValue_d)
 {
   /* TODO: Complete this... */
 }
@@ -65,35 +71,44 @@ void cGetBellParams(float *A_d, int *ellBlockSize_d, int *ellCols_d, int *ellCol
  *
  * @return void
  */
-void cGetDeviceProp()
+void cGetDeviceProp ()
 {
   cudaDeviceProp prop;
   int deviceID = 0;
-	CHECK_CUDA( cudaGetDevice(&deviceID) );
-	CHECK_CUDA( cudaGetDeviceProperties(&prop, deviceID) );
+  CHECK_CUDA( cudaGetDevice(&deviceID) );
+  CHECK_CUDA( cudaGetDeviceProperties(&prop, deviceID) );
   printf("Device name: %s\n", prop.name);
-	printf("Max shared memory: %lu\n", prop.sharedMemPerBlock);
-	printf("Max threads per block: %d\n", prop.maxThreadsPerBlock);
-	printf("Max threads per SM: %d\n", prop.maxThreadsPerMultiProcessor);
-	printf("Concurrent Kernels: %s\n", prop.concurrentKernels ? "true" : "false");
-	printf("32 bit registers per SM: %d\n", prop.regsPerMultiprocessor);
-	printf("Shared memory per SM: %lu\n", prop.sharedMemPerMultiprocessor);
+  printf("Max shared memory: %lu\n", prop.sharedMemPerBlock);
+  printf("Max threads per block: %d\n", prop.maxThreadsPerBlock);
+  printf("Max threads per SM: %d\n", prop.maxThreadsPerMultiProcessor);
+  printf("Concurrent Kernels: %s\n", prop.concurrentKernels ? "true" : "false");
+  printf("32 bit registers per SM: %d\n", prop.regsPerMultiprocessor);
+  printf("Shared memory per SM: %lu\n", prop.sharedMemPerMultiprocessor);
   printf("MultiGPU board: %s\n", prop.isMultiGpuBoard ? "true" : "false");
   printf("Max size of each grid dimension: %d\n", *prop.maxGridSize);
   printf("Max size of each dimension of a block: %d\n", *prop.maxThreadsDim);
   printf("Total global memory: %ld\n", (long) prop.totalGlobalMem);
   printf("Total constant memory: %ld\n", (long) prop.totalConstMem);
   printf("Unified addressing: %s\n", prop.unifiedAddressing ? "true" : "false");
+
+  /* Allocate device properties in constant memory so that you apply the same routines to different GPUs */
+  CHECK_CUDA( cudaMemcpyToSymbol(sharedMemPerBlock_d, prop.sharedMemPerBlock, sizeof(int)) )
+  CHECK_CUDA( cudaMemcpyToSymbol(maxThreadsPerBlock_d, prop.maxThreadsPerBlock, sizeof(int)) )
+  CHECK_CUDA( cudaMemcpyToSymbol(maxThreadsPerSM_d, prop.maxThreadsPerMultiProcessor, sizeof(int)) )
+  CHECK_CUDA( cudaMemcpyToSymbol(sharedMemPerSM_d, prop.sharedMemPerMultiprocessor, sizeof(int)) )
+  CHECK_CUDA( cudaMemcpyToSymbol(maxBlockDimSize_d, *prop.maxThreadsDim, sizeof(int)) )
+  CHECK_CUDA( cudaMemcpyToSymbol(totalGlobalMem_d, (long) prop.totalGlobalMem, sizeof(long)) )
+  CHECK_CUDA( cudaMemcpyToSymbol(totalConstantMem_d, (long) prop.totalConstMem, sizeof(long)) )
 }
 
 
 __device__
-int cIterativeComputeZeroBlocks(float* A_d, int kernelSize)
+int cIterativeComputeZeroBlocks (float* A_d, int kernelSize)
 {
   int id = threadIdx.x + blockIdx.x * blockDim.x + ( blockIdx.y * blockDim.y + threadIdx.y ) * gridDim.x * blockDim.x + (blockIdx.z * blockDim.z + threadIdx.z) * gridDim.x * blockDim.x * gridDim.y * blockDim.y;
 
-	/* id of a thread inside a block */
-	int blockId = threadIdx.x;
+  /* id of a thread inside a block */
+  int blockId = threadIdx.x;
   return 0;
 }
 

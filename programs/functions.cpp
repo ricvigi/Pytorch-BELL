@@ -33,7 +33,7 @@
  *
  * @return int, the number of zero blocks of size kernelSize x kernelSize in tensor A
  */
-int computeZeroBlocks(torch::Tensor &A, int rows, int cols, int kernelSize)
+int computeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernelSize)
 {
     int nBlocksH, nBlocksW, res;
     torch::Tensor B, bSums;
@@ -56,7 +56,7 @@ int computeZeroBlocks(torch::Tensor &A, int rows, int cols, int kernelSize)
  *
  * @return int, the number of zero blocks of size kernelSize x kernelSize in tensor A
  */
-int iterativeComputeZeroBlocks(torch::Tensor &A, int rows, int cols, int kernelSize)
+int iterativeComputeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernelSize)
 {
   int count = 0;
   int nBlocksH = rows / kernelSize;
@@ -105,7 +105,7 @@ int iterativeComputeZeroBlocks(torch::Tensor &A, int rows, int cols, int kernelS
  *
  * @return returns a torch::Tensor object, that stores the sum of the values of all blocks of size kernelSize x kernelSize in A. From this object we will compute ellCols, but since we need it elsewhere, we return this object instead
  */
-torch::Tensor computeEllCols(torch::Tensor& A, int rows, int cols, int kernelSize)
+torch::Tensor computeEllCols (torch::Tensor& A, int rows, int cols, int kernelSize)
 {
   int nBlocksH, nBlocksW;
   torch::Tensor B, bSums;
@@ -127,7 +127,7 @@ torch::Tensor computeEllCols(torch::Tensor& A, int rows, int cols, int kernelSiz
  *
  * @return returns a torch::Tensor object, that stores the sum of the values of all blocks of size kernelSize x kernelSize in A. From this object we will compute ellCols, but since we need it elsewhere, we return this object instead
  */
-torch::Tensor iterativeComputeEllCols(torch::Tensor& A, int rows, int cols, int kernelSize)
+torch::Tensor iterativeComputeEllCols (torch::Tensor& A, int rows, int cols, int kernelSize)
 {
   int nBlocksH = rows / kernelSize;
   int nBlocksW = cols / kernelSize;
@@ -181,7 +181,7 @@ torch::Tensor iterativeComputeEllCols(torch::Tensor& A, int rows, int cols, int 
  *
  * @return void. The return value of this function is ellColInd
  */
-void getEllColInd(torch::Tensor &bSums, int *ellColInd, int rows, int cols)
+void getEllColInd (torch::Tensor &bSums, int *ellColInd, int rows, int cols)
 {
   int idx, rowSize;
   float val;
@@ -239,7 +239,7 @@ void getEllColInd(torch::Tensor &bSums, int *ellColInd, int rows, int cols)
  *
  * @return void. The return value of this function is ellValue
  */
-void getEllValues(torch::Tensor& A, float *ellValue, int *ellColInd, int rows, int cols, int ellBlockSize)
+void getEllValues (torch::Tensor& A, float *ellValue, int *ellColInd, int rows, int cols, int ellBlockSize)
 {
   int blockCol, dstIndex, rowIndex, colIndex;
   std::vector<float*> rowPointers(rows * ellBlockSize);
@@ -288,7 +288,7 @@ void getEllValues(torch::Tensor& A, float *ellValue, int *ellColInd, int rows, i
  *
  * @return Best block size on success, EXIT_FAILURE on error.
  */
-int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCols, int*& ellColInd, float*& ellValue)
+int getBellParams (torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCols, int*& ellColInd, float*& ellValue)
 {
   /* Variable declarations */
   int i, j, kernelSize, zeroBlocks, maxZeroBlocks, zeroCount, nZeroes, *divisors, divisorsSize, rows, cols, size, colIdx, nThreads;
@@ -344,7 +344,9 @@ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCol
     id = omp_get_thread_num();
     localBestZeroes = 0;
 
-    /* NOTE: Should we use a guided schedule for this loop parallelism? */
+    /* NOTE: Should we use a guided schedule for this loop parallelism?
+    /* ATTENTION: This routine might be a waste of time... remember that if blocksize 2*n has < zeroes than blocksize
+    /* n, it might be pointless to continue... */
 #   pragma omp for
     for (i = 0; i < divisorsSize; ++i)
     {

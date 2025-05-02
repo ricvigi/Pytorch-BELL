@@ -25,7 +25,7 @@
 
 
 
-int main(int argc, char** argv)
+int main (int argc, char** argv)
 {
   if (argc < 5)
   {
@@ -38,6 +38,7 @@ int main(int argc, char** argv)
   rows = atoi(argv[1]);
   cols = atoi(argv[2]);
 
+  /* ATTENTION: do NOT remove this function call */
   cGetDeviceProp();
   return EXIT_SUCCESS;
 }
