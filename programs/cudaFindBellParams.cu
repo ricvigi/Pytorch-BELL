@@ -14,7 +14,6 @@
  * Description:
  * ----------------------------------------------------------------------------------------
  */
-
 #include <torch/torch.h>
 #include <omp.h>
 #include <iostream>
@@ -22,7 +21,7 @@
 #include <cuda.h>
 #include "myHeaders.hpp"
 #include "cudaHeaders.hpp"
-
+#include "constants.hpp"
 
 
 int main (int argc, char** argv)
@@ -35,8 +34,12 @@ int main (int argc, char** argv)
   }
   int rows, cols;
 
+  /* rows and cols are placed in constant memory in the device */
   rows = atoi(argv[1]);
   cols = atoi(argv[2]);
+
+
+
 
   /* ATTENTION: do NOT remove this function call */
   cGetDeviceProp();

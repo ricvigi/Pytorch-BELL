@@ -14,7 +14,6 @@
  * Description:
  * ----------------------------------------------------------------------------------------
  */
-
 #include <cuda_runtime_api.h> // cudaMalloc, cudaMemcpy, etc.
 #include <cusparse.h>         // cusparseSpMM
 #include <cstdio>
@@ -24,7 +23,7 @@
 #include "cudaHeaders.hpp"
 #include "myHeaders.hpp"
 
-/* Constants. ATTENTION: You MUST allocate these values with cudaMemcpyToSymbol (...) */
+// /* Constants. ATTENTION: You MUST allocate these values with cudaMemcpyToSymbol (...) */
 __constant__ int rows_d;
 __constant__ int cols_d;
 __constant__ int sharedMemPerBlock_d;
@@ -35,18 +34,30 @@ __constant__ int maxBlockDimSize_d;
 __constant__ int totalGlobalMem_d;
 __constant__ int totalConstantMem_d;
 
-void launch_cGetBellParams (torch::Tensor A, int *rows, int *cols)
+void launch_cGetBellParams (torch::Tensor A, int rows, int cols, int blockSize)
 {
   float *A_d, *A_h;
   int A_size;
 
-  A_size = *rows * *cols;
+  if (rows != cols)
+  {
+    printf("Matrix must be square\n");
+    fflush(stdout);
+    exit(EXIT_FAILURE);
+  } else if (isPrime(rows) == 1)
+  {
+    printf("Matrix dimensions can't be prime\n");
+    fflush(stdout);
+    exit(EXIT_FAILURE);
+  }
+
+  A_size = rows * cols;
+  divisors = nullptr;
+  divisorsSize = findDivisors(rows, divisors);
 
   A_h = A.contiguous().data_ptr<float>();
   CHECK_CUDA( cudaMalloc((void**) &A_d, A_size * sizeof(float)) )
-
-  CHECK_CUDA( cudaMemcpyToSymbol(rows_d, rows, sizeof(int)) )
-  CHECK_CUDA( cudaMemcpyToSymbol(cols_d, cols, sizeof(int)) )
+  CHECK_CUDA( cudaMemcpy(A_d, A_h, A_size, cudaMemcpyHostToDevice) )
 }
 
 /**
@@ -92,23 +103,25 @@ void cGetDeviceProp ()
   printf("Unified addressing: %s\n", prop.unifiedAddressing ? "true" : "false");
 
   /* Allocate device properties in constant memory so that you apply the same routines to different GPUs */
-  CHECK_CUDA( cudaMemcpyToSymbol(sharedMemPerBlock_d, prop.sharedMemPerBlock, sizeof(int)) )
-  CHECK_CUDA( cudaMemcpyToSymbol(maxThreadsPerBlock_d, prop.maxThreadsPerBlock, sizeof(int)) )
-  CHECK_CUDA( cudaMemcpyToSymbol(maxThreadsPerSM_d, prop.maxThreadsPerMultiProcessor, sizeof(int)) )
-  CHECK_CUDA( cudaMemcpyToSymbol(sharedMemPerSM_d, prop.sharedMemPerMultiprocessor, sizeof(int)) )
-  CHECK_CUDA( cudaMemcpyToSymbol(maxBlockDimSize_d, *prop.maxThreadsDim, sizeof(int)) )
-  CHECK_CUDA( cudaMemcpyToSymbol(totalGlobalMem_d, (long) prop.totalGlobalMem, sizeof(long)) )
-  CHECK_CUDA( cudaMemcpyToSymbol(totalConstantMem_d, (long) prop.totalConstMem, sizeof(long)) )
+  // CHECK_CUDA( cudaMemcpyToSymbol(sharedMemPerBlock_d, &prop.sharedMemPerBlock, sizeof(int)) )
+  // CHECK_CUDA( cudaMemcpyToSymbol(maxThreadsPerBlock_d, &prop.maxThreadsPerBlock, sizeof(int)) )
+  // CHECK_CUDA( cudaMemcpyToSymbol(maxThreadsPerSM_d, &prop.maxThreadsPerMultiProcessor, sizeof(int)) )
+  // CHECK_CUDA( cudaMemcpyToSymbol(sharedMemPerSM_d, &prop.sharedMemPerMultiprocessor, sizeof(int)) )
+  // CHECK_CUDA( cudaMemcpyToSymbol(maxBlockDimSize_d, &prop.maxThreadsDim, sizeof(int)) )
+  // CHECK_CUDA( cudaMemcpyToSymbol(totalGlobalMem_d, (long*) prop.totalGlobalMem, sizeof(long)) ) /* ATTENTION: This call introduces an error */
+  // CHECK_CUDA( cudaMemcpyToSymbol(totalConstantMem_d, (long*) prop.totalConstMem, sizeof(long)) ) /* ATTENTION: This call introduces an error */
 }
 
 
 __device__
 int cIterativeComputeZeroBlocks (float* A_d, int kernelSize)
 {
-  int id = threadIdx.x + blockIdx.x * blockDim.x + ( blockIdx.y * blockDim.y + threadIdx.y ) * gridDim.x * blockDim.x + (blockIdx.z * blockDim.z + threadIdx.z) * gridDim.x * blockDim.x * gridDim.y * blockDim.y;
+  int tid = threadIdx.x + blockIdx.x * blockDim.x + ( blockIdx.y * blockDim.y + threadIdx.y ) * gridDim.x * blockDim.x + (blockIdx.z * blockDim.z + threadIdx.z) * gridDim.x * blockDim.x * gridDim.y * blockDim.y;
 
   /* id of a thread inside a block */
   int blockId = threadIdx.x;
+
+  extern __shared__ int sMem[];
   return 0;
 }
 
