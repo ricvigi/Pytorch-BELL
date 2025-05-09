@@ -15,7 +15,6 @@
  * ----------------------------------------------------------------------------------------
  */
 
-
 #ifndef CUDA_HEADERS
 #define CUDA_HEADERS
 extern int PRINT_DEBUG;
@@ -45,6 +44,9 @@ extern int PRINT_DEBUG;
 #endif
 
 
+void launch_cGetBellParams (torch::Tensor& A, /* in */
+                            int rows,         /* in */
+                            int cols          /* in */);
 
 __global__
 void cGetBellParams(float* A_d,             /* in */

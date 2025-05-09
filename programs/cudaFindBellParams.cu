@@ -21,7 +21,8 @@
 #include <cuda.h>
 #include "myHeaders.hpp"
 #include "cudaHeaders.hpp"
-#include "constants.hpp"
+
+int PRINT_DEBUG = 0;
 
 
 int main (int argc, char** argv)
@@ -33,15 +34,23 @@ int main (int argc, char** argv)
     return EXIT_FAILURE;
   }
   int rows, cols;
+  float threshold;
+  torch::Tensor A;
 
   /* rows and cols are placed in constant memory in the device */
   rows = atoi(argv[1]);
   cols = atoi(argv[2]);
+  threshold = atof(argv[3]);
+  PRINT_DEBUG = atoi(argv[4]);
 
 
+  A = torch::randn({rows, cols});
+  A.masked_fill_(A < threshold, 0);
 
 
   /* ATTENTION: do NOT remove this function call */
   cGetDeviceProp();
+
+  launch_cGetBellParams(A, rows, cols, 2);
   return EXIT_SUCCESS;
 }

@@ -34,7 +34,17 @@ __constant__ int maxBlockDimSize_d;
 __constant__ int totalGlobalMem_d;
 __constant__ int totalConstantMem_d;
 
-void launch_cGetBellParams (torch::Tensor A, int rows, int cols, int blockSize)
+
+/**
+ * @brief Prepares the environment and lanches the kernel cGetBellParams
+ *
+ * @param &A Reference to the tensor to be transformed
+ * @param rows First dimension of A
+ * @param cols Second dimension of A
+ *
+ * @return an integer representing success or a failure
+ */
+int launch_cGetBellParams (torch::Tensor& A, int rows, int cols)
 {
   float *A_d, *A_h;
   int A_size;
@@ -43,21 +53,27 @@ void launch_cGetBellParams (torch::Tensor A, int rows, int cols, int blockSize)
   {
     printf("Matrix must be square\n");
     fflush(stdout);
-    exit(EXIT_FAILURE);
-  } else if (isPrime(rows) == 1)
+    return EXIT_FAILURE;
+  } else if (isPrime(rows))
   {
     printf("Matrix dimensions can't be prime\n");
     fflush(stdout);
-    exit(EXIT_FAILURE);
+    return EXIT_FAILURE;
   }
 
+  /* ATTENTION: Change these values */
+  dim3 dimBlock(1);
+  dim3 dimGrid(1);
+
   A_size = rows * cols;
-  divisors = nullptr;
-  divisorsSize = findDivisors(rows, divisors);
+  int* divisors = nullptr;
+  int divisorsSize = findDivisors(rows, divisors);
 
   A_h = A.contiguous().data_ptr<float>();
-  CHECK_CUDA( cudaMalloc((void**) &A_d, A_size * sizeof(float)) )
-  CHECK_CUDA( cudaMemcpy(A_d, A_h, A_size, cudaMemcpyHostToDevice) )
+  CHECK_CUDA( cudaMalloc((void**) &A_d, A_size * sizeof(float)) );
+  CHECK_CUDA( cudaMemcpy(A_d, A_h, A_size * sizeof(float), cudaMemcpyHostToDevice) );
+
+  return EXIT_SUCCESS;
 }
 
 /**
@@ -111,7 +127,6 @@ void cGetDeviceProp ()
   // CHECK_CUDA( cudaMemcpyToSymbol(totalGlobalMem_d, (long*) prop.totalGlobalMem, sizeof(long)) ) /* ATTENTION: This call introduces an error */
   // CHECK_CUDA( cudaMemcpyToSymbol(totalConstantMem_d, (long*) prop.totalConstMem, sizeof(long)) ) /* ATTENTION: This call introduces an error */
 }
-
 
 __device__
 int cIterativeComputeZeroBlocks (float* A_d, int kernelSize)
