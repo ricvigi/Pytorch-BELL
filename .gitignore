@@ -7,7 +7,7 @@ desensiPapers
 *findBellParamsCUDA
 CUDALibrarySamples
 extension-cpp
-spmm_blockedell
+# spmm_blockedell
 ssgetpy
 DGX
 programs/libtorch.zip

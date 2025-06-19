@@ -33,7 +33,8 @@
  *
  * @return int, the number of zero blocks of size kernelSize x kernelSize in tensor A
  */
-int computeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernelSize)
+int
+computeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernelSize)
 {
     int nBlocksH, nBlocksW, res;
     torch::Tensor B, bSums;
@@ -56,7 +57,8 @@ int computeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernelSize)
  *
  * @return int, the number of zero blocks of size kernelSize x kernelSize in tensor A
  */
-int iterativeComputeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernelSize)
+int
+iterativeComputeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernelSize)
 {
   int count = 0;
   int nBlocksH = rows / kernelSize;
@@ -105,7 +107,8 @@ int iterativeComputeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernel
  *
  * @return returns a torch::Tensor object, that stores the sum of the values of all blocks of size kernelSize x kernelSize in A. From this object we will compute ellCols, but since we need it elsewhere, we return this object instead
  */
-torch::Tensor computeEllCols (torch::Tensor& A, int rows, int cols, int kernelSize)
+torch::Tensor
+computeEllCols (torch::Tensor& A, int rows, int cols, int kernelSize)
 {
   int nBlocksH, nBlocksW;
   torch::Tensor B, bSums;
@@ -127,7 +130,8 @@ torch::Tensor computeEllCols (torch::Tensor& A, int rows, int cols, int kernelSi
  *
  * @return returns a torch::Tensor object, that stores the sum of the values of all blocks of size kernelSize x kernelSize in A. From this object we will compute ellCols, but since we need it elsewhere, we return this object instead
  */
-torch::Tensor iterativeComputeEllCols (torch::Tensor& A, int rows, int cols, int kernelSize)
+torch::Tensor
+iterativeComputeEllCols (torch::Tensor& A, int rows, int cols, int kernelSize)
 {
   int nBlocksH = rows / kernelSize;
   int nBlocksW = cols / kernelSize;
@@ -166,8 +170,7 @@ torch::Tensor iterativeComputeEllCols (torch::Tensor& A, int rows, int cols, int
   }
   // bSums = torch::from_blob(tBSums, {rows, cols}, torch::kFloat32).clone();
   // free(tBSums);
-  bSums = torch::from_blob(tBSums, {rows, cols}, del, torch::TensorOptions().dtype(torch::kFloat32)
-);
+  bSums = torch::from_blob(tBSums, {rows, cols}, del, torch::TensorOptions().dtype(torch::kFloat32));
   return bSums;
 }
 
@@ -181,7 +184,8 @@ torch::Tensor iterativeComputeEllCols (torch::Tensor& A, int rows, int cols, int
  *
  * @return void. The return value of this function is ellColInd
  */
-void getEllColInd (torch::Tensor &bSums, int *ellColInd, int rows, int cols)
+void
+getEllColInd (torch::Tensor &bSums, int *ellColInd, int rows, int cols)
 {
   int idx, rowSize;
   float val;
@@ -239,7 +243,8 @@ void getEllColInd (torch::Tensor &bSums, int *ellColInd, int rows, int cols)
  *
  * @return void. The return value of this function is ellValue
  */
-void getEllValues (torch::Tensor& A, float *ellValue, int *ellColInd, int rows, int cols, int ellBlockSize)
+void
+getEllValues (torch::Tensor& A, float *ellValue, int *ellColInd, int rows, int cols, int ellBlockSize)
 {
   int blockCol, dstIndex, rowIndex, colIndex;
   std::vector<float*> rowPointers(rows * ellBlockSize);
@@ -285,10 +290,13 @@ void getEllValues (torch::Tensor& A, float *ellValue, int *ellColInd, int rows, 
  * @param y Size of the second dimension of A
  * @param &ellBlockSize Reference to the variable that will store the best block size for tensor A
  * @param &ellCols Reference to the variable that will store the number of columns in BELL
+ * @param *&ellColInd Pointer to a reference of the ellColInd array, that stores the indices of non zero blocks
+ * @param *&ellValue Pointer to a reference to the ellValue array, that contains the non zero values of A
  *
- * @return Best block size on success, EXIT_FAILURE on error.
+ * @return int EXIT_SUCCESS or int EXIT_FAILURE
  */
-int getBellParams (torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCols, int*& ellColInd, float*& ellValue)
+int
+getBellParams (torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCols, int*& ellColInd, float*& ellValue)
 {
   /* Variable declarations */
   int i, j, kernelSize, zeroBlocks, maxZeroBlocks, zeroCount, nZeroes, *divisors, divisorsSize, rows, cols, size, colIdx, nThreads;
@@ -299,7 +307,7 @@ int getBellParams (torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCo
    * ATTENTION: This instruction allows nested parallelism. Right now it improves performance, but i'm
    * not sure why :/...
    * If you remove this, or set it to 0, all calls to functions that contain parallel regions, if called
-   * inside a parallel region, will be executed sequentially.
+   * when already inside a parallel region, will be executed sequentially, not in parallel.
    */
   omp_set_nested(1);
 
@@ -412,7 +420,12 @@ int getBellParams (torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCo
 
   tStart = omp_get_wtime();
   /* Create the ellValue array */
-  ellValue = (float*) malloc((rows*cols*ellBlockSize*ellBlockSize)*sizeof(float));
+  /* ATTENTION: How many rows does ellValue have? should we completely eliminate a row of blocks if it's entirely made of zeroes? */
+  /* NOTE: OLD memory formula. If something breaks it might be due to the new one down below */
+  // ellValue = (float*) malloc((rows*cols*ellBlockSize*ellBlockSize)*sizeof(float));
+  /* NEW FORMULA */
+  ellValue = (float*) malloc((x*ellCols*ellBlockSize)*sizeof(float));
+
   getEllValues(A, ellValue, ellColInd, rows, cols, ellBlockSize);
   // getEllValues(A, ellValue, ellColInd);
   tEnd = omp_get_wtime();

@@ -16,7 +16,7 @@ CUDA_LIBTORCH = $(INCLUDES) $(CUDA_LDFLAGS) $(LIBS)
 HEADERS = myHeaders.hpp
 CUDA_HEADERS = cudaHeaders.hpp
 
-TARGETS = test_sparse_conversion.out test_count_zero_blocks.out docTests.out test.out classes.out COO.out findBellParams.out functions.out findBellParamsCUDA cudaFunctions.o cudaFindBellParams.o constants.o
+TARGETS = test_sparse_conversion.o test_count_zero_blocks.o docTests.o test.o classes.o COO.o findBellParams.o functions.o findBellParamsCUDA cudaFunctions.o cudaFindBellParams.o constants.o
 
 all: $(TARGETS)
 
@@ -32,28 +32,28 @@ cudaFunctions.o: cudaFunctions.cu $(CUDA_HEADERS)
 cudaFindBellParams.o: cudaFindBellParams.cu $(CUDA_HEADERS)
 	$(NVCC) $(NVCCFLAGS) -c cudaFindBellParams.cu -o $@
 
-functions.out: functions.cpp $(HEADERS)
+functions.o: functions.cpp $(HEADERS)
 	$(CXX) $(CXXFLAGS) -c functions.cpp $(LIBTORCH) -o $@
 
-findBellParams.out: findBellParams.cpp functions.out $(HEADERS)
-	$(CXX) $(CXXFLAGS) findBellParams.cpp functions.out $(LIBTORCH) -o $@
+findBellParams.o: findBellParams.cpp functions.o $(HEADERS)
+	$(CXX) $(CXXFLAGS) findBellParams.cpp functions.o $(LIBTORCH) -o $@
 
-test_sparse_conversion.out: test_sparse_conversion.cpp $(HEADERS)
+test_sparse_conversion.o: test_sparse_conversion.cpp $(HEADERS)
 	$(CXX) $(CXXFLAGS) test_sparse_conversion.cpp $(LIBTORCH) -o $@
 
-test_count_zero_blocks.out: test_count_zero_blocks.cpp $(HEADERS)
+test_count_zero_blocks.o: test_count_zero_blocks.cpp $(HEADERS)
 	$(CXX) $(CXXFLAGS) test_count_zero_blocks.cpp $(LIBTORCH) -o $@
 
-docTests.out: docTests.cc $(HEADERS)
+docTests.o: docTests.cc $(HEADERS)
 	$(CXX) -std=c++17 docTests.cc $(LIBTORCH) -o $@
 
-test.out: test.cc $(HEADERS)
+test.o: test.cc $(HEADERS)
 	$(CXX) -std=c++17 test.cc $(LIBTORCH) -o $@
 
-classes.out: classes.cc $(HEADERS)
+classes.o: classes.cc $(HEADERS)
 	$(CXX) -g -Wall classes.cc -o $@
 
-COO.out: COO.cc $(HEADERS)
+COO.o: COO.cc $(HEADERS)
 	$(CXX) -g -Wall -fopenmp COO.cc -o $@
 
 clean:

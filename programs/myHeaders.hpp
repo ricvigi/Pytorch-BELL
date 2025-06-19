@@ -21,9 +21,11 @@
 #include <cstdio>
 #include <cmath>
 
+/* If PRINT_DEBUG is 1, we print a lot of things, in order to debug... */
 extern int PRINT_DEBUG;
 
-int getBellParams(torch::Tensor& A,         /* in */
+int
+getBellParams(torch::Tensor& A,         /* in */
                   int x,                    /* in */
                   int y,                    /* in */
                   int& ellBlockSize,        /* out */
@@ -31,27 +33,32 @@ int getBellParams(torch::Tensor& A,         /* in */
                   int*& ellColInd,          /* out */
                   float*& ellValue          /* out */);
 
-int computeZeroBlocks(torch::Tensor& A,  /* in */
+int
+computeZeroBlocks(torch::Tensor& A,  /* in */
                       int rows,          /* in */
                       int cols,          /* in */
                       int kernelSize     /* in */);
 
-int iterativeComputeZeroBlocks(torch::Tensor& A,  /* in */
+int
+iterativeComputeZeroBlocks(torch::Tensor& A,  /* in */
                                int rows,          /* in */
                                int cols,          /* in */
                                int kernelSize     /* in */);
 
-torch::Tensor computeEllCols(torch::Tensor& A,  /* in */
+torch::Tensor
+computeEllCols(torch::Tensor& A,  /* in */
                              int rows,          /* in */
                              int cols,          /* in */
                              int kernelSize     /* in */);
 
-void getEllColInd(torch::Tensor& bSums, /* in */
+void
+getEllColInd(torch::Tensor& bSums, /* in */
                   int* ellColInd,       /* out */
                   int rows,             /* in */
                   int cols              /* in */);
 
-void getEllValues(torch::Tensor& A, /* in */
+void
+getEllValues(torch::Tensor& A, /* in */
                   float *ellValue,  /* in */
                   int *ellColInd,   /* in */
                   int rows,         /* in */
@@ -67,7 +74,8 @@ void getEllValues(torch::Tensor& A, /* in */
  *
  * @return void
  */
-static inline void printTensor(const torch::Tensor &A, int x, int y)
+static inline void
+printTensor(const torch::Tensor &A, int x, int y)
 {
   for (int i = 0; i < x; ++i)
   {
@@ -86,7 +94,8 @@ static inline void printTensor(const torch::Tensor &A, int x, int y)
  *
  * @return 1 if x is prime, 0 otherwise
  */
-static inline int isPrime(const int x)
+static inline int
+isPrime(const int x)
 {
   int root = (int) sqrt(x);
   int prime = 1;
@@ -111,7 +120,8 @@ static inline int isPrime(const int x)
  * @return void
  */
 template <typename T> /* ATTENTION: We should check that T is strictly numeric */
-inline void printMat(const T* M, int rows, int cols)
+inline void
+printMat(const T* M, int rows, int cols)
 {
   for (int i = 0; i < rows; ++i)
   {
@@ -123,7 +133,8 @@ inline void printMat(const T* M, int rows, int cols)
   }
 }
 
-static inline void printEllValue(float* ellValue, int rows, int cols, int kernelSize) {
+static inline void
+printEllValue(float* ellValue, int rows, int cols, int kernelSize) {
   for (int i = 0; i < rows * kernelSize; ++i) {
     for (int j = 0; j < cols * kernelSize; ++j) {
       int blockRow = i / kernelSize;
@@ -147,7 +158,8 @@ static inline void printEllValue(float* ellValue, int rows, int cols, int kernel
  *
  * @return The size of the array of integers that stores all the found divisors of x
  */
-static inline int findDivisors(int x, int*& divisors)
+static inline int
+findDivisors(int x, int*& divisors)
 {
   int size = 0;
   int i;
