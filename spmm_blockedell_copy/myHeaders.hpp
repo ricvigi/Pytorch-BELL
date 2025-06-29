@@ -11,6 +11,7 @@ int getBellParams(torch::Tensor& A,         /* in */
                   int& ellCols,             /* out */
                   int*& ellColInd,          /* out */
                   float*& ellValue);        /* out */
+__host__ void count_non_zeroes(double *mat, unsigned int rows, unsigned int cols, unsigned int *n_non_zeroes);
 
 /**
  * @brief Prints the values stored in a two dimensional tensor of size (x,y)
