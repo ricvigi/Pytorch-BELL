@@ -152,7 +152,7 @@ main(int argc, char** argv)
   float beta  = 0.0f;
 
 
-  std::cout << "A:\n" << A << std::endl;
+  // std::cout << "A:\n" << A << std::endl;
   float *hA = A.contiguous().data_ptr<float>();
   float *hB = B.contiguous().data_ptr<float>();
   float *hC = C.contiguous().data_ptr<float>();
