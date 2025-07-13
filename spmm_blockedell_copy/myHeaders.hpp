@@ -3,6 +3,9 @@
 #include <torch/torch.h>
 #include <cstdio>
 #include <cmath>
+extern int PRINT_DEBUG;
+
+
 
 int getBellParams(torch::Tensor& A,         /* in */
                   int x,                    /* in */

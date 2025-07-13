@@ -1,51 +1,3 @@
-/*
- * Copyright 1993-2022 NVIDIA Corporation.  All rights reserved.
- *
- * NOTICE TO LICENSEE:
- *
- * This source code and/or documentation ("Licensed Deliverables") are
- * subject to NVIDIA intellectual property rights under U.S. and
- * international Copyright laws.
- *
- * These Licensed Deliverables contained herein is PROPRIETARY and
- * CONFIDENTIAL to NVIDIA and is being provided under the terms and
- * conditions of a form of NVIDIA software license agreement by and
- * between NVIDIA and Licensee ("License Agreement") or electronically
- * accepted by Licensee.  Notwithstanding any terms or conditions to
- * the contrary in the License Agreement, reproduction or disclosure
- * of the Licensed Deliverables to any third party without the express
- * written consent of NVIDIA is prohibited.
- *
- * NOTWITHSTANDING ANY TERMS OR CONDITIONS TO THE CONTRARY IN THE
- * LICENSE AGREEMENT, NVIDIA MAKES NO REPRESENTATION ABOUT THE
- * SUITABILITY OF THESE LICENSED DELIVERABLES FOR ANY PURPOSE.  IT IS
- * PROVIDED "AS IS" WITHOUT EXPRESS OR IMPLIED WARRANTY OF ANY KIND.
- * NVIDIA DISCLAIMS ALL WARRANTIES WITH REGARD TO THESE LICENSED
- * DELIVERABLES, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY,
- * NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE.
- * NOTWITHSTANDING ANY TERMS OR CONDITIONS TO THE CONTRARY IN THE
- * LICENSE AGREEMENT, IN NO EVENT SHALL NVIDIA BE LIABLE FOR ANY
- * SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, OR ANY
- * DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
- * WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
- * ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
- * OF THESE LICENSED DELIVERABLES.
- *
- * U.S. Government End Users.  These Licensed Deliverables are a
- * "commercial item" as that term is defined at 48 C.F.R. 2.101 (OCT
- * 1995), consisting of "commercial computer software" and "commercial
- * computer software documentation" as such terms are used in 48
- * C.F.R. 12.212 (SEPT 1995) and is provided to the U.S. Government
- * only as a commercial end item.  Consistent with 48 C.F.R.12.212 and
- * 48 C.F.R. 227.7202-1 through 227.7202-4 (JUNE 1995), all
- * U.S. Government End Users acquire the Licensed Deliverables with
- * only those rights set forth herein.
- *
- * Any use of the Licensed Deliverables in individual and commercial
- * software must include, in the user documentation and internal
- * comments to the code, the above Disclaimer and U.S. Government End
- * Users Notice.
- */
 #include <cuda_fp16.h>        // data types
 #include <cuda_runtime_api.h> // cudaMalloc, cudaMemcpy, etc.
 #include <cusparse.h>         // cusparseSpMM
@@ -182,7 +134,7 @@ main(int argc, char** argv)
   // ATTENTION: ellCols is usually considered to be the number of columns in ell format, NOT the number of blocks.
   ellCols = ellBlockSize * ellCols;
   // Device memory management
-  printf("ellCols: %n, n_non_zeroes: %d\n", ellCols, n_non_zeroes);
+  printf("ellCols: %d, n_non_zeroes: %d\n", ellCols, n_non_zeroes);
   int ellColInd_size = A_rows * ellCols;
   cudaStream_t stream;
   CHECK_CUDA(cudaStreamCreate(&stream))
@@ -190,7 +142,6 @@ main(int argc, char** argv)
   int    *dA_columns;
   float *dA_values, *dB, *dC;
   CHECK_CUDA(cudaMalloc((void**) &dA_columns, ellColInd_size * sizeof(int)))
-  // CHECK_CUDA(cudaMalloc((void**) &dA_values, (A_rows*ellCols*ellBlockSize) * sizeof(float)))
   CHECK_CUDA(cudaMalloc((void**) &dA_values, A_rows * ellCols * sizeof(float)))
   CHECK_CUDA(cudaMalloc((void**) &dB, B_rows * B_cols * sizeof(float)))
   CHECK_CUDA(cudaMalloc((void**) &dC, C_rows * C_cols * sizeof(float)))
@@ -203,9 +154,12 @@ main(int argc, char** argv)
 
   printf("ellCols: %d, ellBlockSize: %d\n", ellCols, ellBlockSize);
 
-  cusparseHandle_t     handle = NULL;
+  /* [BEGIN] Dense to sparse conversion */
+  // To create a conversion you need a dense matrix to convert it into a sparse matrix. If you want to store matrix A
+  // in a sparse format, you need to convert A's dense representation to sparse!
+  cusparseHandle_t     conversionHandle = NULL;
   cusparseDnMatDescr_t matA;
-  cusparseSpMatDescr_t matB, matC;
+  cusparseSpMatDescr_t matSpA;
   void*                dBuffer    = NULL;
   size_t               bufferSize = 0;
   CHECK_CUSPARSE(cusparseCreate(&handle))
@@ -219,7 +173,7 @@ main(int argc, char** argv)
                                       CUDA_R_32F, CUSPARSE_ORDER_ROW) )
 
   // Create sparse matrix B in Blocked ELL format
-  CHECK_CUSPARSE( cusparseCreateBlockedEll(&matB, A_rows, A_cols,
+  CHECK_CUSPARSE( cusparseCreateBlockedEll(&matSpA, A_rows, A_cols,
                                            ellBlockSize, ellCols,
                                            dA_columns, dA_values,
                                            CUSPARSE_INDEX_32I,
@@ -227,44 +181,54 @@ main(int argc, char** argv)
                                            CUDA_R_32F) )
 
   // allocate an external buffer if needed
-  CHECK_CUSPARSE(cusparseDenseToSparse_bufferSize(handle, matA, matB,
+  CHECK_CUSPARSE(cusparseDenseToSparse_bufferSize(conversionHandle, matA, matSpA,
                                                   CUSPARSE_DENSETOSPARSE_ALG_DEFAULT, &bufferSize))
   CHECK_CUDA(cudaMalloc(&dBuffer, bufferSize))
 
   // execute Sparse to Dense conversion
-  CHECK_CUSPARSE(cusparseDenseToSparse_analysis(handle, matA, matB, CUSPARSE_DENSETOSPARSE_ALG_DEFAULT, dBuffer))
+  CHECK_CUSPARSE(cusparseDenseToSparse_analysis(handle, matA, matSpA, CUSPARSE_DENSETOSPARSE_ALG_DEFAULT, dBuffer))
 
   // execute Sparse to Dense conversion
-  CHECK_CUSPARSE(cusparseDenseToSparse_convert(handle, matA, matB, CUSPARSE_DENSETOSPARSE_ALG_DEFAULT, dBuffer))
-  /*
-   *  cusparseStatus_t
-   *  cusparseDenseToSparse_bufferSize(cusparseHandle_t           handle,
-   *                                   cusparseConstDnMatDescr_t  matA,  // non-const descriptor supported
-   *                                   cusparseSpMatDescr_t       matB,
-   *                                   cusparseDenseToSparseAlg_t alg,
-   *                                   size_t*                    bufferSize)
-   *  cusparseStatus_t
-   *  cusparseDenseToSparse_analysis(cusparseHandle_t           handle,
-   *                                 cusparseConstDnMatDescr_t  matA,  // non-const descriptor supported
-   *                                 cusparseSpMatDescr_t       matB,
-   *                                 cusparseDenseToSparseAlg_t alg,
-   *                                 void*                      buffer)
-   *  cusparseStatus_t
-   *  cusparseDenseToSparse_convert(cusparseHandle_t           handle,
-   *                                cusparseConstDnMatDescr_t  matA,  // non-const descriptor supported
-   *                                cusparseSpMatDescr_t       matB,
-   *                                cusparseDenseToSparseAlg_t alg,
-   *                                void*                      buffer)
-   */
+  CHECK_CUSPARSE(cusparseDenseToSparse_convert(handle, matA, matSpA, CUSPARSE_DENSETOSPARSE_ALG_DEFAULT, dBuffer))
+  /* [END] Dense to sparse conversion */
 
-  // destroy matrix/vector descriptors
-  CHECK_CUSPARSE(cusparseDestroyDnMat(matA))
-  CHECK_CUSPARSE(cusparseDestroySpMat(matB))
-  CHECK_CUSPARSE(cusparseDestroySpMat(matC))
-  CHECK_CUSPARSE(cusparseDestroy(handle))
+
+  /* [BEGIN] Execute sparse-dense matrix multiplication */
+
+  //--------------------------------------------------------------------------
+  // CUSPARSE APIs
+  cusparseHandle_t     multiplicationHandle = NULL;
+  cusparseDnMatDescr_t matB, matC;
+  void*                dBufferMul = NULL;
+  size_t               bufferMulSize = 0;
+  CHECK_CUSPARSE( cusparseCreate(&multiplicationHandle) )
+  // Create dense matrix B
+  CHECK_CUSPARSE( cusparseCreateDnMat(&matB, B_rows, B_cols, ldb, dB,
+                                      CUDA_R_32F, CUSPARSE_ORDER_ROW) )
+  // Create dense matrix C
+  CHECK_CUSPARSE( cusparseCreateDnMat(&matC, C_rows, C_cols, ldc, dC,
+                                      CUDA_R_32F, CUSPARSE_ORDER_ROW) )
+  // allocate an external buffer if needed
+  CHECK_CUSPARSE( cusparseSpMM_bufferSize(
+    multiplicationHandle,
+    CUSPARSE_OPERATION_NON_TRANSPOSE,
+    CUSPARSE_OPERATION_NON_TRANSPOSE,
+    &alpha, matSpA, matB, &beta, matC, CUDA_R_32F,
+    CUSPARSE_SPMM_ALG_DEFAULT, &bufferMulSize) )
+  CHECK_CUDA( cudaMalloc(&dBufferMul, bufferMulSize) )
+
+  // execute SpMM
+  CHECK_CUSPARSE( cusparseSpMM(multiplicationHandle,
+                               CUSPARSE_OPERATION_NON_TRANSPOSE,
+                               CUSPARSE_OPERATION_NON_TRANSPOSE,
+                               &alpha, matSpA, matB, &beta, matC, CUDA_R_32F,
+                               CUSPARSE_SPMM_ALG_DEFAULT, dBufferMul) )
+
+  /* [END] Execute sparse-dense matrix multiplication */
 
   float *h_ellValues = (float*) malloc(A_rows * ellCols * sizeof(float));
   CHECK_CUDA(cudaMemcpy(h_ellValues, dA_values, A_rows * ellCols * sizeof(float), cudaMemcpyDeviceToHost))
+
   for (unsigned int i = 0; i < A_rows; ++i)
   {
     for (unsigned int j = 0; j < ellCols; ++j)
@@ -274,16 +238,16 @@ main(int argc, char** argv)
     printf("\n");
   }
 
-  // CHECK_CUDA(cudaMemcpy(hC, dC, C_rows * C_cols * sizeof(float), cudaMemcpyDeviceToHost))
-  // printf("SpMM result:\n");
-  // for (unsigned int i = 0; i < C_rows; ++i)
-  // {
-  //   for (unsigned int j = 0; j < C_cols; ++j)
-  //   {
-  //     printf("%f ", hC[i * C_cols + j]);
-  //   }
-  //   printf("\n");
-  // }
+  CHECK_CUDA(cudaMemcpy(hC, dC, C_rows * C_cols * sizeof(float), cudaMemcpyDeviceToHost))
+  printf("SpMM result:\n");
+  for (unsigned int i = 0; i < C_rows; ++i)
+  {
+    for (unsigned int j = 0; j < C_cols; ++j)
+    {
+      printf("%f ", hC[i * C_cols + j]);
+    }
+    printf("\n");
+  }
 
   torch::Tensor res = torch::mm(A,B);
   printf("PyTorch result:\n");
@@ -295,7 +259,15 @@ main(int argc, char** argv)
   CHECK_CUDA(cudaFree(dB))
   CHECK_CUDA(cudaFree(dC))
   CHECK_CUDA(cudaFree(dBuffer))
+  CHECK_CUDA(cudaFree(dBufferMul))
   CHECK_CUDA(cudaFree(dA_dense))
+  CHECK_CUSPARSE(cusparseDestroyDnMat(matA))
+  CHECK_CUSPARSE(cusparseDestroySpMat(matSpA))
+  CHECK_CUSPARSE(cusparseDestroy(conversionHandle))
+  CHECK_CUSPARSE( cusparseDestroyDnMat(matB) )
+  CHECK_CUSPARSE( cusparseDestroyDnMat(matC) )
+  CHECK_CUSPARSE
+
   free(non_zero_values);
   free(ellColInd);
   free(ellValue);
