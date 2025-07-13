@@ -162,7 +162,7 @@ main(int argc, char** argv)
   cusparseSpMatDescr_t matSpA;
   void*                dBuffer    = NULL;
   size_t               bufferSize = 0;
-  CHECK_CUSPARSE(cusparseCreate(&handle))
+  CHECK_CUSPARSE(cusparseCreate(&conversionHandle))
 
   /* ATTENTION: remember that leading dimension is number of columns if we use CUSPARSE_ORDER_ROW, and vice versa */
   // Create dense matrix A
@@ -186,10 +186,10 @@ main(int argc, char** argv)
   CHECK_CUDA(cudaMalloc(&dBuffer, bufferSize))
 
   // execute Sparse to Dense conversion
-  CHECK_CUSPARSE(cusparseDenseToSparse_analysis(handle, matA, matSpA, CUSPARSE_DENSETOSPARSE_ALG_DEFAULT, dBuffer))
+  CHECK_CUSPARSE(cusparseDenseToSparse_analysis(conversionHandle, matA, matSpA, CUSPARSE_DENSETOSPARSE_ALG_DEFAULT, dBuffer))
 
   // execute Sparse to Dense conversion
-  CHECK_CUSPARSE(cusparseDenseToSparse_convert(handle, matA, matSpA, CUSPARSE_DENSETOSPARSE_ALG_DEFAULT, dBuffer))
+  CHECK_CUSPARSE(cusparseDenseToSparse_convert(conversionHandle, matA, matSpA, CUSPARSE_DENSETOSPARSE_ALG_DEFAULT, dBuffer))
   /* [END] Dense to sparse conversion */
 
 
@@ -228,7 +228,6 @@ main(int argc, char** argv)
 
   float *h_ellValues = (float*) malloc(A_rows * ellCols * sizeof(float));
   CHECK_CUDA(cudaMemcpy(h_ellValues, dA_values, A_rows * ellCols * sizeof(float), cudaMemcpyDeviceToHost))
-
   for (unsigned int i = 0; i < A_rows; ++i)
   {
     for (unsigned int j = 0; j < ellCols; ++j)
@@ -264,10 +263,9 @@ main(int argc, char** argv)
   CHECK_CUSPARSE(cusparseDestroyDnMat(matA))
   CHECK_CUSPARSE(cusparseDestroySpMat(matSpA))
   CHECK_CUSPARSE(cusparseDestroy(conversionHandle))
-  CHECK_CUSPARSE( cusparseDestroyDnMat(matB) )
-  CHECK_CUSPARSE( cusparseDestroyDnMat(matC) )
-  CHECK_CUSPARSE
-
+  CHECK_CUSPARSE(cusparseDestroyDnMat(matB))
+  CHECK_CUSPARSE(cusparseDestroyDnMat(matC))
+  CHECK_CUSPARSE(cusparseDestroy(multiplicationHandle))
   free(non_zero_values);
   free(ellColInd);
   free(ellValue);
