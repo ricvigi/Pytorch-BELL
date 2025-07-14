@@ -145,8 +145,9 @@ main(int argc, char** argv)
   CHECK_CUDA(cudaMalloc((void**) &dB, B_rows * B_cols * sizeof(float)))
   CHECK_CUDA(cudaMalloc((void**) &dC, C_rows * C_cols * sizeof(float)))
   CHECK_CUDA(cudaMemcpy(dA_columns, ellColInd, ellColInd_size * sizeof(int), cudaMemcpyHostToDevice))
-  CHECK_CUDA(cudaMemcpy(dA_values, ellValue,
-                        A_rows * ellCols * sizeof(float), cudaMemcpyHostToDevice))
+  // CHECK_CUDA(cudaMemcpy(dA_values, ellValue,
+  //                       A_rows * ellCols * sizeof(float), cudaMemcpyHostToDevice))
+  CHECK_CUDA(cudaMemset(dA_values, 0.0f, A_rows * ellCols * sizeof(float)))
   CHECK_CUDA(cudaMemcpy(dB, hB, B_rows * B_cols * sizeof(float), cudaMemcpyHostToDevice))
   CHECK_CUDA(cudaMemcpy(dC, hC, C_rows * C_cols * sizeof(float), cudaMemcpyHostToDevice))
 
