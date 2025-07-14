@@ -104,7 +104,6 @@ main(int argc, char** argv)
   float beta  = 0.0f;
 
 
-  // std::cout << "A:\n" << A << std::endl;
   float *hA = A.contiguous().data_ptr<float>();
   float *hB = B.contiguous().data_ptr<float>();
   float *hC = C.contiguous().data_ptr<float>();
@@ -139,7 +138,7 @@ main(int argc, char** argv)
   cudaStream_t stream;
   CHECK_CUDA(cudaStreamCreate(&stream))
 
-  int    *dA_columns;
+  int *dA_columns;
   float *dA_values, *dB, *dC;
   CHECK_CUDA(cudaMalloc((void**) &dA_columns, ellColInd_size * sizeof(int)))
   CHECK_CUDA(cudaMalloc((void**) &dA_values, A_rows * ellCols * sizeof(float)))
