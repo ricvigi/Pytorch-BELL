@@ -140,16 +140,15 @@ main(int argc, char** argv)
 
   int *dA_columns;
   float *dA_values, *dB, *dC;
-  CHECK_CUDA(cudaMalloc((void**) &dA_columns, ellColInd_size * sizeof(int)))
-  CHECK_CUDA(cudaMalloc((void**) &dA_values, A_rows * ellCols * sizeof(float)))
-  CHECK_CUDA(cudaMalloc((void**) &dB, B_rows * B_cols * sizeof(float)))
-  CHECK_CUDA(cudaMalloc((void**) &dC, C_rows * C_cols * sizeof(float)))
-  CHECK_CUDA(cudaMemcpy(dA_columns, ellColInd, ellColInd_size * sizeof(int), cudaMemcpyHostToDevice))
-  // CHECK_CUDA(cudaMemcpy(dA_values, ellValue,
-  //                       A_rows * ellCols * sizeof(float), cudaMemcpyHostToDevice))
-  CHECK_CUDA(cudaMemset(dA_values, 0.0f, A_rows * ellCols * sizeof(float)))
-  CHECK_CUDA(cudaMemcpy(dB, hB, B_rows * B_cols * sizeof(float), cudaMemcpyHostToDevice))
-  CHECK_CUDA(cudaMemcpy(dC, hC, C_rows * C_cols * sizeof(float), cudaMemcpyHostToDevice))
+  CHECK_CUDA(cudaMallocAsync((void**) &dA_columns, ellColInd_size * sizeof(int), stream))
+  CHECK_CUDA(cudaMallocAsync((void**) &dA_values, A_rows * ellCols * sizeof(float), stream))
+  CHECK_CUDA(cudaMallocAsync((void**) &dB, B_rows * B_cols * sizeof(float), stream))
+  CHECK_CUDA(cudaMallocAsync((void**) &dC, C_rows * C_cols * sizeof(float), stream))
+  CHECK_CUDA(cudaMemcpyAsync(dA_columns, ellColInd, ellColInd_size * sizeof(int), cudaMemcpyHostToDevice, stream))
+  // CHECK_CUDA(cudaMemcpy(dA_values, ellValue, A_rows * ellCols * sizeof(float), cudaMemcpyHostToDevice))
+  CHECK_CUDA(cudaMemsetAsync(dA_values, 0.0f, A_rows * ellCols * sizeof(float), stream))
+  CHECK_CUDA(cudaMemcpyAsync(dB, hB, B_rows * B_cols * sizeof(float), cudaMemcpyHostToDevice, stream))
+  CHECK_CUDA(cudaMemcpyAsync(dC, hC, C_rows * C_cols * sizeof(float), cudaMemcpyHostToDevice, stream))
 
 
   printf("ellCols: %d, ellBlockSize: %d\n", ellCols, ellBlockSize);
@@ -164,11 +163,20 @@ main(int argc, char** argv)
   size_t               bufferSize = 0;
   CHECK_CUSPARSE(cusparseCreate(&conversionHandle))
 
+  /* [BEGIN] Create events to time the runtime of spmm */
+  cudaEvent_t start, stop;
+  CHECK_CUDA(cudaEventCreate(&start))
+  CHECK_CUDA(cudaEventCreate(&stop))
+
+  /* [END] Create events to time the runtime of spmm */
+
   /* ATTENTION: remember that leading dimension is number of columns if we use CUSPARSE_ORDER_ROW, and vice versa */
   // Create dense matrix A
   float *dA_dense;
-  CHECK_CUDA(cudaMalloc((void**) &dA_dense, A_rows * A_cols * sizeof(double)))
-  CHECK_CUDA(cudaMemcpy(dA_dense, hA, A_rows * A_cols * sizeof(double), cudaMemcpyHostToDevice))
+  CHECK_CUDA(cudaMallocAsync((void**) &dA_dense, A_rows * A_cols * sizeof(double), stream))
+  CHECK_CUDA(cudaMemcpyAsync(dA_dense, hA, A_rows * A_cols * sizeof(double), cudaMemcpyHostToDevice, stream))
+  CHECK_CUDA(cudaStreamSynchronize(stream))
+
   CHECK_CUSPARSE( cusparseCreateDnMat(&matA, A_rows, A_cols, lda, dA_dense,
                                       CUDA_R_32F, CUSPARSE_ORDER_ROW) )
 
@@ -266,6 +274,8 @@ main(int argc, char** argv)
   CHECK_CUSPARSE(cusparseDestroyDnMat(matB))
   CHECK_CUSPARSE(cusparseDestroyDnMat(matC))
   CHECK_CUSPARSE(cusparseDestroy(multiplicationHandle))
+  CHECK_CUDA(cudaEvenDestroy(start))
+  CHECK_CUDA(cudaEventDestroy(stop))
   free(non_zero_values);
   free(ellColInd);
   free(ellValue);
