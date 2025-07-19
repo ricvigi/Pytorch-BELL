@@ -1,10 +1,79 @@
 #ifndef MY_HEADERS_HPP
 #define MY_HEADERS_HPP
 #include <torch/torch.h>
+#include <cusparse.h>         // cusparseSpMM
+#include <cuda_fp16.h>        // data types
+#include <cuda_runtime_api.h> // cudaMalloc, cudaMemcpy, etc.
+#include <cstdio>            // printf
+#include <cstdlib>           // EXIT_FAILURE
+#include <torch/torch.h>
+#include <omp.h>
+#include <math.h>
 #include <cstdio>
 #include <cmath>
+
+#ifndef CHECK_CUDA
+#define CHECK_CUDA(func)                                                       \
+{                                                                              \
+  cudaError_t status = (func);                                               \
+  if (status != cudaSuccess) {                                               \
+    std::printf("CUDA API failed at line %d with error: %s (%d)\n",        \
+    __LINE__, cudaGetErrorString(status), status);                  \
+    return EXIT_FAILURE;                                                   \
+  }                                                                          \
+}
+#endif
+
+#ifndef CHECK_CUSPARSE
+#define CHECK_CUSPARSE(func)                                                   \
+{                                                                              \
+  cusparseStatus_t status = (func);                                          \
+  if (status != CUSPARSE_STATUS_SUCCESS) {                                   \
+    std::printf("CUSPARSE API failed at line %d with error: %s (%d)\n",    \
+    __LINE__, cusparseGetErrorString(status), status);              \
+    return EXIT_FAILURE;                                                   \
+  }                                                                          \
+}
+#endif
+
 extern int PRINT_DEBUG;
 
+const int EXIT_UNSUPPORTED = 2;
+
+
+/**
+ * @brief This function execute sparse matrix-matrix multiplication and stores the result in dense matric C.
+ * @note If you consider B as a m x 1 vector, it's also an implementation of sparse-vector multiplication
+ */
+template <typename T>
+__host__ int execute_spmm(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t B, cusparseDnMatDescr_t C, T alpha, T beta)
+{
+  float a = static_cast<float>(alpha);
+  float b = static_cast<float>(beta);
+
+  cusparseHandle_t multiplicationHandle = NULL;
+  void* dBufferMul = NULL;
+  size_t bufferMulSize = 0;
+  CHECK_CUSPARSE( cusparseCreate(&multiplicationHandle) )
+
+  CHECK_CUSPARSE( cusparseSpMM_bufferSize(
+                  multiplicationHandle,
+                  CUSPARSE_OPERATION_NON_TRANSPOSE,
+                  CUSPARSE_OPERATION_NON_TRANSPOSE,
+                  &a, spA, B, &b, C, CUDA_R_32F,
+                  CUSPARSE_SPMM_ALG_DEFAULT, &bufferMulSize) )
+
+  CHECK_CUDA( cudaMalloc(&dBufferMul, bufferMulSize) )
+
+  // execute SpMM
+  CHECK_CUSPARSE( cusparseSpMM(multiplicationHandle,
+                               CUSPARSE_OPERATION_NON_TRANSPOSE,
+                               CUSPARSE_OPERATION_NON_TRANSPOSE,
+                               &a, spA, B, &b, C, CUDA_R_32F,
+                               CUSPARSE_SPMM_ALG_DEFAULT, dBufferMul) )
+  CHECK_CUDA( cudaFree(dBufferMul) )
+  return EXIT_SUCCESS;
+}
 
 
 int getBellParams(torch::Tensor& A,         /* in */
@@ -14,7 +83,53 @@ int getBellParams(torch::Tensor& A,         /* in */
                   int& ellCols,             /* out */
                   int*& ellColInd,          /* out */
                   float*& ellValue);        /* out */
-__host__ void count_non_zeroes(double *mat, unsigned int rows, unsigned int cols, unsigned int *n_non_zeroes);
+
+/* Returns the number of non-zero values of matrix float *mat. rows and cols are the dimensions of *mat, and n_non_zeroes is the return value (should be initialized to 0 before calling this function). */
+__host__ inline void
+count_non_zeroes(float *mat, unsigned int rows, unsigned int cols, unsigned int *n_non_zeroes)
+{
+  const float eps = 1e-9;
+  // number of non zero values in *mat
+
+  for (unsigned int i = 0; i < rows; ++i)
+  {
+    for (unsigned int j = 0; j < cols; ++j)
+    {
+      float t = 0.0f;
+      t += mat[i * cols + j];
+      if (fabs(t) > eps)
+      {
+        *n_non_zeroes += 1;
+      } else
+      {
+        continue;
+      }
+    }
+  }
+}
+
+/* Returns a contiguous array containing all the non zero values in *mat. The return array must be pre allocated, its size is the value returned by count_non_zeroes */
+__host__ inline void
+extract_non_zeros(float *mat, unsigned int rows, unsigned int cols, float *non_zero_values)
+{
+  const float eps = 1e-9;
+  unsigned int idx = 0;
+
+  for (unsigned int i = 0; i < rows; ++i)
+  {
+    for (unsigned int j = 0; j < cols; ++j)
+    {
+      float t = 0.0f;
+      t += mat[i * cols + j];
+      if (fabs(t) > eps)
+      {
+        non_zero_values[idx] = t;
+        idx += 1;
+      }
+    }
+  }
+}
+
 
 /**
  * @brief Prints the values stored in a two dimensional tensor of size (x,y)
@@ -115,12 +230,12 @@ static inline int findDivisors(int x, int*& divisors)
 {
   int size = 0;
   int i;
-# pragma omp parallel for schedule(static, 1)
+  # pragma omp parallel for schedule(static, 1)
   for (i = 2; i <= (x / 2); i++) /* With normal iteration the result array is naturally sorted */
   {
     if (x % i == 0)
     {
-#     pragma omp critical
+      #     pragma omp critical
       {
         size += 1;
         divisors = (int*) realloc(divisors, sizeof(int)*size);
@@ -135,13 +250,13 @@ static inline int findDivisors(int x, int*& divisors)
 template <typename T>
 void rowToColMajor(const T *r_major, T *c_major, int n_rows, int n_cols)
 {
-    for (int i = 0; i < n_rows; ++i)
+  for (int i = 0; i < n_rows; ++i)
+  {
+    for (int j = 0; j < n_cols; ++j)
     {
-        for (int j = 0; j < n_cols; ++j)
-        {
-            c_major[j * n_rows + i] = r_major[i * n_cols + j];
-        }
+      c_major[j * n_rows + i] = r_major[i * n_cols + j];
     }
+  }
 }
 
 
