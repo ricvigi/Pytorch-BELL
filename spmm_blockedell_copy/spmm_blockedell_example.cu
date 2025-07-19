@@ -11,6 +11,8 @@
     unsigned int rows = static_cast<unsigned int>(A_rows);
     unsigned int cols = static_cast<unsigned int>(A_cols);
 
+    float *hA = A.contiguous().data_ptr<float>();
+
 
 
     return EXIT_SUCCESS;
