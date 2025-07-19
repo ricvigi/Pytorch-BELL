@@ -2,7 +2,7 @@
 #include <omp.h>
 #include <iostream>
 #include <cmath>
-#include "myHeaders.hpp"
+#include "myHeaders.cuh"
 
 
 

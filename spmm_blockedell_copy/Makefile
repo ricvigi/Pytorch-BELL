@@ -5,7 +5,7 @@ CXX = g++
 NVCC = nvcc
 HEADERS = myHeaders.cuh
 NVCCFLAGS = -O0 -std=c++17 -Wno-deprecated-gpu-targets $(INCLUDES)
-LDFLAGS = -Llibtorch/lib -Wl,-rpath,libtorch/lib
+LDFLAGS = -Llibtorch/lib #-Wl,-rpath,libtorch/lib
 INCLUDES = -Ilibtorch/include -Ilibtorch/include/torch/csrc/api/include
 LIBS = -ltorch -ltorch_cpu -lc10
 LIBTORCH = $(INCLUDES) $(LDFLAGS) $(LIBS)
