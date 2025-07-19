@@ -1,6 +1,21 @@
 #include "myHeaders.hpp"
 
-// int PRINT_DEBUG = 0;
+
+/**
+   * @brief converts matrix A (pointer) into blockedell format and returns a descriptor object of the blockedell format
+   */
+  template <typename T> // TODO: move this in myHeaders.hpp. Change the return type to cusparseSpMatDescr_t ? it would require to not use the CHECK_CUDA macro
+  __host__ int convert_to_blockedell(torch::Tensor A  /* in */, cusparseSpMatDescr_t spA /* out */,
+                                     T A_rows /* in */, T A_cols /* in */)
+  {
+    unsigned int rows = static_cast<unsigned int>(A_rows);
+    unsigned int cols = static_cast<unsigned int>(A_cols);
+
+
+
+    return EXIT_SUCCESS;
+  }
+
 
 int
 main(int argc, char** argv)
@@ -76,6 +91,9 @@ main(int argc, char** argv)
   CHECK_CUDA(cudaStreamSynchronize(stream))
 
   printf("ellCols: %d, ellBlockSize: %d\n", ellCols, ellBlockSize);
+
+
+
 
   /* [BEGIN] Dense to sparse conversion */
   // To create a conversion you need a dense matrix to convert it into a sparse matrix. If you want to store matrix A

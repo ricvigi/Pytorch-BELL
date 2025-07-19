@@ -3,7 +3,7 @@ INC          := -I$(CUDA_TOOLKIT)/include
 LIBS         := -lcusparse -fopenmp
 CXX = g++
 NVCC = nvcc
-HEADERS = ../programs/myHeaders.hpp
+HEADERS = myHeaders.cuh
 NVCCFLAGS = -O0 -std=c++17 -Wno-deprecated-gpu-targets $(INCLUDES)
 LDFLAGS = -Llibtorch/lib -Wl,-rpath,libtorch/lib
 INCLUDES = -Ilibtorch/include -Ilibtorch/include/torch/csrc/api/include
@@ -24,8 +24,8 @@ spmm_blockedell_example: spmm_blockedell_example.cu functions.o $(HEADERS)
     -lcusparse \
     -o spmm_blockedell_example
 
-functions.o: ../programs/functions.cpp $(HEADERS)
-	$(NVCC) $(CXXFLAGS) -c ../programs/functions.cpp $(LIBTORCH) -o $@
+functions.o: functions.cu $(HEADERS)
+	$(NVCC) $(CXXFLAGS) -c functions.cu $(LIBTORCH) -o $@
 clean:
 	rm -f spmm_blockedell_example *.o
 
