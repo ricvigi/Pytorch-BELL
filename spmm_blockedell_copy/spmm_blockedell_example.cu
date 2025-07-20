@@ -1,6 +1,5 @@
 #include "myHeaders.cuh"
 
-
 /**
  * @brief converts matrix A (pointer) into blockedell format and returns a descriptor object of the blockedell format
  */
@@ -47,10 +46,10 @@ __host__ int convert_to_blockedell(torch::Tensor A  /* in */, cusparseSpMatDescr
   /* [BEGIN] Dense to sparse conversion */
   // To create a conversion you need a dense matrix to convert it into a sparse matrix. If you want to store matrix A
   // in a sparse format, you need to convert A's dense representation to sparse!
-  cusparseHandle_t     conversionHandle = NULL;
-  cusparseDnMatDescr_t matA;
-  void*                dBuffer    = NULL;
-  size_t               bufferSize = 0;
+  cusparseHandle_t conversionHandle = NULL;
+  cusparseDnMatDescr_t matA = nullptr;
+  void *dBuffer    = NULL;
+  size_t bufferSize = 0;
   CHECK_CUSPARSE(cusparseCreate(&conversionHandle))
 
   /* ATTENTION: remember that leading dimension is number of columns if we use CUSPARSE_ORDER_ROW, and vice versa */
@@ -169,7 +168,7 @@ main(int argc, char** argv)
   // in a sparse format, you need to convert A's dense representation to sparse!
   // cusparseHandle_t     conversionHandle = NULL;
   // cusparseDnMatDescr_t matA;
-  cusparseSpMatDescr_t matSpA;
+  cusparseSpMatDescr_t matSpA = nullptr;
   convert_to_blockedell(A, matSpA);
   // void*                dBuffer    = NULL;
   // size_t               bufferSize = 0;
