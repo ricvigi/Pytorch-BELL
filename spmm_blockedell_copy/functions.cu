@@ -213,10 +213,11 @@ __host__ void getEllColInd (torch::Tensor &bSums, int *ellColInd, int rows, int 
 template <typename T>
 __host__ void getEllValues (torch::Tensor& A, T *ellValue, int *ellColInd, int rows, int cols, int ellBlockSize)
 {
-  int blockCol, dstIndex, rowIndex, colIndex;
+  int blockCol;
+  int rowIndex;
   std::vector<T*> rowPointers(rows * ellBlockSize);
 
-  # pragma omp parallel shared(rowPointers, A, ellColInd, ellValue) private(blockCol, dstIndex, rowIndex, colIndex)
+  # pragma omp parallel shared(rowPointers, A, ellColInd, ellValue) private(blockCol, rowIndex)
   {
     #   pragma omp for
     for (int i = 0; i < rows * ellBlockSize; ++i)
@@ -266,21 +267,16 @@ template <typename T>
 __host__ int getBellParams (torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCols, int*& ellColInd, T*& ellValue)
 {
   /* Variable declarations */
-  int i, j;
-  int kernelSize;
-  int zeroBlocks;
-  int maxZeroBlocks;
+  int i;
   int zeroCount;
-  int nZeroes;
   int *divisors;
   int divisorsSize;
   int rows;
   int cols;
   int size;
-  int colIdx;
   int nThreads;
 
-  T start, end, tStart, tEnd;
+  double start, end, tStart, tEnd;
   torch::Tensor bSums;
 
   /*
@@ -314,7 +310,6 @@ __host__ int getBellParams (torch::Tensor& A, int x, int y, int& ellBlockSize, i
   ellCols = 0;
   ellBlockSize = 0;
   zeroCount = 0;
-  maxZeroBlocks = 0;
   divisors = nullptr; /* Initialize the pointer */
   divisorsSize = findDivisors(x, divisors);
   nThreads = std::min(divisorsSize, omp_get_num_procs());
@@ -442,16 +437,16 @@ __host__ int getBellParams (torch::Tensor& A, int x, int y, int& ellBlockSize, i
  * @brief converts matrix A (pointer) into blockedell format and returns a descriptor object of the blockedell format
  */
 template <typename T>
-__host__ int convert_to_blockedell(torch::Tensor A            /* in */, // ATTENTION: passing by reference or value?
-                                   cusparseDnMatDescr_t &matA /* in */,
-                                   cusparseSpMatDescr_t &spA  /* out */,
-                                   int *dA_columns            /* in */,
-                                   T *dA_values               /* in */,
-                                   T *dA_dense                /* in */,
-                                   int *ellBlockSize          /* in */,
-                                   int *ellCols               /* in */,
-                                   int *ellColInd             /* in */,
-                                   T *ellValue                /* in */)
+__host__ int convert_to_blockedell(torch::Tensor &A            /* in */,
+                                   cusparseDnMatDescr_t &matA  /* in */,
+                                   cusparseSpMatDescr_t &spA   /* out */,
+                                   int *dA_columns             /* in */,
+                                   T *dA_values                /* in */,
+                                   T *dA_dense                 /* in */,
+                                   int *ellBlockSize           /* in */,
+                                   int *ellCols                /* in */,
+                                   int *ellColInd              /* in */,
+                                   T *ellValue                 /* in */)
 {
   unsigned int A_rows = A.size(0);
   unsigned int A_cols = A.size(1);
@@ -477,7 +472,6 @@ __host__ int convert_to_blockedell(torch::Tensor A            /* in */, // ATTEN
   // ATTENTION: ellCols is usually considered to be the number of columns in ell format, NOT the number of blocks (of the ell format).
   *ellCols = (*ellBlockSize) * (*ellCols);
   // Device memory management
-  // printf("ellCols: %d, n_non_zeroes: %d\n", ellCols, n_non_zeroes);
   int ellColInd_size = A_rows * (*ellCols);
   cudaStream_t stream;
   CHECK_CUDA(cudaStreamCreate(&stream))
@@ -487,7 +481,7 @@ __host__ int convert_to_blockedell(torch::Tensor A            /* in */, // ATTEN
   CHECK_CUDA(cudaMallocAsync((void**) &dA_values, A_rows * (*ellCols) * sizeof(T), stream))
   CHECK_CUDA(cudaMemcpyAsync(dA_dense, hA, A_rows * A_cols * sizeof(T), cudaMemcpyHostToDevice, stream))
   CHECK_CUDA(cudaMemcpyAsync(dA_columns, ellColInd, ellColInd_size * sizeof(int), cudaMemcpyHostToDevice, stream))
-  CHECK_CUDA(cudaMemsetAsync(dA_values, 0.0f, A_rows * (*ellCols) * sizeof(T), stream))
+  CHECK_CUDA(cudaMemsetAsync(dA_values, T(0), A_rows * (*ellCols) * sizeof(T), stream))
   CHECK_CUDA(cudaStreamSynchronize(stream))
 
   /* [BEGIN] Dense to sparse conversion */
@@ -536,29 +530,63 @@ __host__ int convert_to_blockedell(torch::Tensor A            /* in */, // ATTEN
 template <typename T>
 __host__ int execute_spmm(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t B, cusparseDnMatDescr_t C, T alpha, T beta)
 {
-  cusparseHandle_t multiplicationHandle = NULL;
-  void* dBufferMul = NULL;
-  size_t bufferMulSize = 0;
-  CHECK_CUSPARSE( cusparseCreate(&multiplicationHandle) )
+  cusparseHandle_t spmm_handle = NULL;
+  void* d_spmm_handle_buffer = NULL;
+  size_t d_spmm_handle_buffer_size = 0;
+  CHECK_CUSPARSE( cusparseCreate(&spmm_handle) )
 
   constexpr cudaDataType_t cuda_type = cuda_dtype<T>::val;
 
   CHECK_CUSPARSE( cusparseSpMM_bufferSize(
-                  multiplicationHandle,
-                  CUSPARSE_OPERATION_NON_TRANSPOSE,
-                  CUSPARSE_OPERATION_NON_TRANSPOSE,
-                  &alpha, spA, B, &beta, C, cuda_type,
-                  CUSPARSE_SPMM_BLOCKED_ELL_ALG1, &bufferMulSize) )
+    spmm_handle,
+    CUSPARSE_OPERATION_NON_TRANSPOSE,
+    CUSPARSE_OPERATION_NON_TRANSPOSE,
+    &alpha, spA, B, &beta, C, cuda_type,
+    CUSPARSE_SPMM_BLOCKED_ELL_ALG1, &d_spmm_handle_buffer_size) )
 
-  CHECK_CUDA( cudaMalloc(&dBufferMul, bufferMulSize) )
+  CHECK_CUDA( cudaMalloc(&d_spmm_handle_buffer, d_spmm_handle_buffer_size) )
 
   // execute SpMM
-  CHECK_CUSPARSE( cusparseSpMM(multiplicationHandle,
+  CHECK_CUSPARSE( cusparseSpMM(spmm_handle,
                                CUSPARSE_OPERATION_NON_TRANSPOSE,
                                CUSPARSE_OPERATION_NON_TRANSPOSE,
                                &alpha, spA, B, &beta, C, cuda_type,
-                               CUSPARSE_SPMM_BLOCKED_ELL_ALG1, dBufferMul) )
-  CHECK_CUDA( cudaFree(dBufferMul) )
+                               CUSPARSE_SPMM_BLOCKED_ELL_ALG1, d_spmm_handle_buffer) )
+  CHECK_CUSPARSE( cusparseDestroy(spmm_handle) )
+  CHECK_CUDA( cudaFree(d_spmm_handle_buffer) )
+  return EXIT_SUCCESS;
+}
+
+/**
+ * @brief This function executes sparse matrix-vector multiplication and stores the result in vecY.
+ * @note Because cusparse does not support spmv for blockedell format, we have to trick the user and perform spmm instead of spmv, where the vector is a m x 1 matrix.
+ */
+template <typename T>
+__host__ int execute_spmv(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t vecX, cusparseDnMatDescr_t vecY, T alpha, T beta)
+{
+  cusparseHandle_t spmv_handle = NULL;
+  void *d_spmv_buffer = NULL;
+  size_t d_spmv_buffer_size = 0;
+  CHECK_CUSPARSE( cusparseCreate(&spmv_handle) )
+
+  constexpr cudaDataType_t cuda_type = cuda_dtype<T>::val;
+
+  // allocate an external buffer if needed
+  CHECK_CUSPARSE( cusparseSpMM_bufferSize(spmv_handle,
+                                          CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                          CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                          &alpha, spA, vecX, &beta, vecY, cuda_type,
+                                          CUSPARSE_SPMM_BLOCKED_ELL_ALG1, &d_spmv_buffer_size))
+  CHECK_CUDA( cudaMalloc(&d_spmv_buffer, d_spmv_buffer_size) )
+
+  // execute SpMV
+  CHECK_CUSPARSE( cusparseSpMM(spmv_handle,
+                               CUSPARSE_OPERATION_NON_TRANSPOSE,
+                               CUSPARSE_OPERATION_NON_TRANSPOSE,
+                               &alpha, spA, vecX, &beta, vecY, cuda_type,
+                               CUSPARSE_SPMM_BLOCKED_ELL_ALG1, d_spmv_buffer))
+  CHECK_CUSPARSE(cusparseDestroy(spmv_handle))
+  CHECK_CUDA(cudaFree(d_spmv_buffer))
   return EXIT_SUCCESS;
 }
 
@@ -567,25 +595,38 @@ __host__ int execute_spmm(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t B, cusp
 
 template __host__ int iterativeComputeZeroBlocks<float>(torch::Tensor&, int, int, int);
 template __host__ int iterativeComputeZeroBlocks<double>(torch::Tensor&, int, int, int);
+template __host__ int iterativeComputeZeroBlocks<int8_t>(torch::Tensor&, int, int, int);
 
 template __host__ torch::Tensor iterativeComputeEllCols<float>(torch::Tensor&, int, int, int);
 template __host__ torch::Tensor iterativeComputeEllCols<double>(torch::Tensor&, int, int, int);
+template __host__ torch::Tensor iterativeComputeEllCols<int8_t>(torch::Tensor&, int, int, int);
 
 template __host__ void getEllColInd<float>(torch::Tensor&, int*, int, int);
 template __host__ void getEllColInd<double>(torch::Tensor&, int*, int, int);
+template __host__ void getEllColInd<int8_t>(torch::Tensor&, int*, int, int);
 
 template __host__ void getEllValues<float>(torch::Tensor&, float*, int*, int, int, int);
 template __host__ void getEllValues<double>(torch::Tensor&, double*, int*, int, int, int);
+template __host__ void getEllValues<int8_t>(torch::Tensor&, int8_t*, int*, int, int, int);
 
 template __host__ int getBellParams<float>(torch::Tensor&, int, int, int&, int&, int*&, float*&);
 template __host__ int getBellParams<double>(torch::Tensor&, int, int, int&, int&, int*&, double*&);
+template __host__ int getBellParams<int8_t>(torch::Tensor&, int, int, int&, int&, int*&, int8_t*&);
 
-template __host__ int convert_to_blockedell<double>(torch::Tensor A , cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, int *dA_columns, double *dA_values,
+template __host__ int convert_to_blockedell<double>(torch::Tensor &A , cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, int *dA_columns, double *dA_values,
                                                     double *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, double *ellValue);
-template __host__ int convert_to_blockedell<float>(torch::Tensor A , cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, int *dA_columns, float *dA_values,
+template __host__ int convert_to_blockedell<float>(torch::Tensor &A , cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, int *dA_columns, float *dA_values,
                                                    float *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, float *ellValue);
+template __host__ int convert_to_blockedell<int8_t>(torch::Tensor &A , cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, int *dA_columns, int8_t *dA_values,
+                                                   int8_t *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, int8_t *ellValue);
+
 template __host__ int execute_spmm<double>(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t B, cusparseDnMatDescr_t C, double alpha, double beta);
 template __host__ int execute_spmm<float>(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t B, cusparseDnMatDescr_t C, float alpha, float beta);
+template __host__ int execute_spmm<int8_t>(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t B, cusparseDnMatDescr_t C, int8_t alpha, int8_t beta);
+
+template __host__ int execute_spmv<double>(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t vecX, cusparseDnMatDescr_t vecY, double alpha, double beta);
+template __host__ int execute_spmv<float>(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t vecX, cusparseDnMatDescr_t vecY, float alpha, float beta);
+template __host__ int execute_spmv<int8_t>(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t vecX, cusparseDnMatDescr_t vecY, int8_t alpha, int8_t beta);
 
 /* [END] Function instantiations */
 

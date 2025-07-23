@@ -13,7 +13,7 @@
 #include <math.h>
 #include <cstdio>
 #include <cmath>
-#include <ATen/ATen.h>
+#include <cstdint>         // int8_t
 
 
 #ifndef CHECK_CUDA
@@ -62,9 +62,9 @@ struct cuda_dtype<double>
 };
 
 template<> // TODO: Find a way to have half precision tensors
-struct cuda_dtype<__half>
+struct cuda_dtype<int8_t>
 {
-    static constexpr cudaDataType_t val = CUDA_R_16F;
+    static constexpr cudaDataType_t val = CUDA_R_8I;
 };
 
 template <typename T>
@@ -82,11 +82,11 @@ struct scalar_type<float>
   static constexpr torch::ScalarType val = torch::kFloat32;
 };
 
-// template <>
-// struct scalar_type<at::Half>
-// {
-//   static constexpr torch::ScalarType val = torch::kFloat16;
-// };
+template <>
+struct scalar_type<int8_t>
+{
+  static constexpr torch::ScalarType val = torch::kInt8;
+};
 
 
 template <typename T>
@@ -107,16 +107,16 @@ template <typename T> __host__ void getEllValues (torch::Tensor& A, T *ellValue,
 template <typename T> __host__ int getBellParams (torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCols, int*& ellColInd, T*& ellValue);
 
 template <typename T>
-__host__ int convert_to_blockedell(torch::Tensor A            /* in */,
-                                   cusparseDnMatDescr_t &matA /* in */,
-                                   cusparseSpMatDescr_t &spA  /* out */,
-                                   int *dA_columns            /* in */,
-                                   T *dA_values               /* in */,
-                                   T *dA_dense                /* in */,
-                                   int *ellBlockSize          /* in */,
-                                   int *ellCols               /* in */,
-                                   int *ellColInd             /* in */,
-                                   T *ellValue                /* in */);
+__host__ int convert_to_blockedell(torch::Tensor &A            /* in */,
+                                   cusparseDnMatDescr_t &matA  /* in */,
+                                   cusparseSpMatDescr_t &spA   /* out */,
+                                   int *dA_columns             /* in */,
+                                   T *dA_values                /* in */,
+                                   T *dA_dense                 /* in */,
+                                   int *ellBlockSize           /* in */,
+                                   int *ellCols                /* in */,
+                                   int *ellColInd              /* in */,
+                                   T *ellValue                 /* in */);
 
 
 
@@ -126,6 +126,13 @@ __host__ int execute_spmm(cusparseSpMatDescr_t spA /* in */,
                           cusparseDnMatDescr_t C   /* out */,
                           T alpha                  /* in */,
                           T beta                   /* in */);
+
+template <typename T>
+__host__ int execute_spmv(cusparseSpMatDescr_t spA,
+                          cusparseDnMatDescr_t vecX,
+                          cusparseDnMatDescr_t vecY,
+                          T alpha,
+                          T beta);
 
 
 
