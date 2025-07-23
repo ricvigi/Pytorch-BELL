@@ -66,6 +66,11 @@ struct cuda_dtype<int8_t>
 {
     static constexpr cudaDataType_t val = CUDA_R_8I;
 };
+template <>
+struct cuda_dtype<int>
+{
+  static constexpr cudaDataType_t val = CUDA_R_32I;
+}
 
 template <typename T>
 struct scalar_type;
@@ -106,6 +111,11 @@ template <typename T> __host__ void getEllColInd (torch::Tensor &bSums, int *ell
 template <typename T> __host__ void getEllValues (torch::Tensor& A, T *ellValue, int *ellColInd, int rows, int cols, int ellBlockSize);
 template <typename T> __host__ int getBellParams (torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCols, int*& ellColInd, T*& ellValue);
 
+/* [BEGIN] Test functions */
+template <typename T> __host__ int run(int argc, char **argv);
+template <typename T> __host__ int run_int(int argc, char **argv);
+/* [END] Test functions */
+
 template <typename T>
 __host__ int convert_to_blockedell(torch::Tensor &A            /* in */,
                                    cusparseDnMatDescr_t &matA  /* in */,
@@ -133,7 +143,6 @@ __host__ int execute_spmv(cusparseSpMatDescr_t spA,
                           cusparseDnMatDescr_t vecY,
                           T alpha,
                           T beta);
-
 
 
 /* Returns the number of non-zero values of matrix float *mat. rows and cols are the dimensions of *mat, and n_non_zeroes is the return value (should be initialized to 0 before calling this function). */

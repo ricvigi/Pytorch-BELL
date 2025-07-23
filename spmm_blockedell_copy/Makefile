@@ -10,10 +10,10 @@ INCLUDES = -Ilibtorch/include -Ilibtorch/include/torch/csrc/api/include
 LIBS = -ltorch -ltorch_cpu -lc10
 LIBTORCH = $(INCLUDES) $(LDFLAGS) $(LIBS)
 
-all: spmm_blockedell_example functions.o
+all: spmm_blockedell_example functions.o test.o
 
-spmm_blockedell_example: spmm_blockedell_example.cu functions.o $(HEADERS)
-	$(NVCC) $(NVCCFLAGS) spmm_blockedell_example.cu functions.o \
+spmm_blockedell_example: spmm_blockedell_example.cu functions.o test.o $(HEADERS)
+	$(NVCC) $(NVCCFLAGS) spmm_blockedell_example.cu functions.o test.o \
     -Xcompiler -fopenmp \
     -I/opt/cuda/include \
     -Ilibtorch/include \
@@ -26,6 +26,9 @@ spmm_blockedell_example: spmm_blockedell_example.cu functions.o $(HEADERS)
 
 functions.o: functions.cu $(HEADERS)
 	$(NVCC) $(CXXFLAGS) -c functions.cu $(LIBTORCH) -o $@
+
+test.o: test.cu $(HEADERS)
+	$(NVCC) $(CXXFLAGS) -c test.cu $(LIBTORCH) -o $@
 clean:
 	rm -f spmm_blockedell_example *.o
 

@@ -591,6 +591,7 @@ __host__ int execute_spmv(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t vecX, c
 }
 
 
+
 /* [BEGIN] Function instantiations */
 
 template __host__ int iterativeComputeZeroBlocks<float>(torch::Tensor&, int, int, int);
@@ -627,6 +628,8 @@ template __host__ int execute_spmm<int8_t>(cusparseSpMatDescr_t spA, cusparseDnM
 template __host__ int execute_spmv<double>(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t vecX, cusparseDnMatDescr_t vecY, double alpha, double beta);
 template __host__ int execute_spmv<float>(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t vecX, cusparseDnMatDescr_t vecY, float alpha, float beta);
 template __host__ int execute_spmv<int8_t>(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t vecX, cusparseDnMatDescr_t vecY, int8_t alpha, int8_t beta);
+
+
 
 /* [END] Function instantiations */
 
