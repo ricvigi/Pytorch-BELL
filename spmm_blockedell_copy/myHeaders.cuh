@@ -7,6 +7,7 @@
 #include <cuda_runtime_api.h> // cudaMalloc, cudaMemcpy, etc.
 #include <cstdio>            // printf
 #include <cstdlib>           // EXIT_FAILURE
+#include <iostream>
 #include <torch/torch.h>
 #include <omp.h>
 #include <math.h>
@@ -43,7 +44,7 @@ extern int PRINT_DEBUG;
 
 const int EXIT_UNSUPPORTED = 2;
 
-using at::Half;
+template <typename T> int run (int argc, char **argv);
 
 template<typename T>
 struct cuda_dtype;
@@ -60,7 +61,7 @@ struct cuda_dtype<double>
     static constexpr cudaDataType_t val = CUDA_R_64F;
 };
 
-template<>
+template<> // TODO: Find a way to have half precision tensors
 struct cuda_dtype<__half>
 {
     static constexpr cudaDataType_t val = CUDA_R_16F;
@@ -89,151 +90,57 @@ struct scalar_type<float>
 
 
 template <typename T>
-int getBellParams(torch::Tensor& A,         /* in */
-                  int x,                    /* in */
-                  int y,                    /* in */
-                  int& ellBlockSize,        /* out */
-                  int& ellCols,             /* out */
-                  int*& ellColInd,          /* out */
-                  T*& ellValue);            /* out */
+__host__ int getBellParams(torch::Tensor& A,         /* in */
+                           int x,                    /* in */
+                           int y,                    /* in */
+                           int& ellBlockSize,        /* out */
+                           int& ellCols,             /* out */
+                           int*& ellColInd,          /* out */
+                           T*& ellValue);            /* out */
 
+__host__ int computeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernelSize);
+template <typename T> __host__ int iterativeComputeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernelSize);
+__host__ torch::Tensor computeEllCols (torch::Tensor& A, int rows, int cols, int kernelSize);
+template <typename T> __host__ torch::Tensor iterativeComputeEllCols (torch::Tensor& A, int rows, int cols, int kernelSize);
+template <typename T> __host__ void getEllColInd (torch::Tensor &bSums, int *ellColInd, int rows, int cols);
+template <typename T> __host__ void getEllValues (torch::Tensor& A, T *ellValue, int *ellColInd, int rows, int cols, int ellBlockSize);
+template <typename T> __host__ int getBellParams (torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCols, int*& ellColInd, T*& ellValue);
 
-/**
- * @brief converts matrix A (pointer) into blockedell format and returns a descriptor object of the blockedell format
- */
 template <typename T>
-__host__ int convert_to_blockedell(torch::Tensor A  /* in */, cusparseDnMatDescr_t &matA ,cusparseSpMatDescr_t &spA /* out */, int *dA_columns, T *dA_values, T *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, T *ellValue)
-{
-  unsigned int A_rows = A.size(0);
-  unsigned int A_cols = A.size(1);
-  printf("%d %d\n", A_rows, A_cols);
-  unsigned int lda = A_cols;
-
-  constexpr cudaDataType_t cuda_type = cuda_dtype<T>::val;
-
-  T *hA = A.contiguous().data_ptr<T>();
-
-  // Get the ellColInd array for matrix A
-  int err;
-
-
-  err = getBellParams<T>(A, A_rows, A_cols, *ellBlockSize, *ellCols, ellColInd, ellValue);
-  if (err != 0)
-  {
-    printf("Error code %d, exiting!\n", err);
-    fflush(stdout);
-    return err;
-  }
-
-  // ATTENTION: ellCols is usually considered to be the number of columns in ell format, NOT the number of blocks (of the ell format).
-  *ellCols = (*ellBlockSize) * (*ellCols);
-  // Device memory management
-  // printf("ellCols: %d, n_non_zeroes: %d\n", ellCols, n_non_zeroes);
-  int ellColInd_size = A_rows * (*ellCols);
-  cudaStream_t stream;
-  CHECK_CUDA(cudaStreamCreate(&stream))
-
-  CHECK_CUDA(cudaMallocAsync((void**) &dA_dense, A_rows * A_cols * sizeof(float), stream))
-  CHECK_CUDA(cudaMallocAsync((void**) &dA_columns, ellColInd_size * sizeof(int), stream))
-  CHECK_CUDA(cudaMallocAsync((void**) &dA_values, A_rows * (*ellCols) * sizeof(float), stream))
-  CHECK_CUDA(cudaMemcpyAsync(dA_dense, hA, A_rows * A_cols * sizeof(float), cudaMemcpyHostToDevice, stream))
-  CHECK_CUDA(cudaMemcpyAsync(dA_columns, ellColInd, ellColInd_size * sizeof(int), cudaMemcpyHostToDevice, stream))
-  CHECK_CUDA(cudaMemsetAsync(dA_values, 0.0f, A_rows * (*ellCols) * sizeof(float), stream))
-  CHECK_CUDA(cudaStreamSynchronize(stream))
-
-  /* [BEGIN] Dense to sparse conversion */
-  // To create a conversion you need a dense matrix to convert it into a sparse matrix. If you want to store matrix A
-  // in a sparse format, you need to convert A's dense representation to sparse!
-  cusparseHandle_t conversionHandle = NULL;
-  void *dBuffer    = NULL;
-  size_t bufferSize = 0;
-  CHECK_CUSPARSE(cusparseCreate(&conversionHandle))
-
-  /* ATTENTION: remember that leading dimension is number of columns if we use CUSPARSE_ORDER_ROW, and vice versa */
-  // Create dense matrix A
-  CHECK_CUSPARSE( cusparseCreateDnMat(&matA, A_rows, A_cols, lda, dA_dense,
-                                      cuda_type, CUSPARSE_ORDER_ROW) )
-
-  // Create sparse matrix B in Blocked ELL format
-  CHECK_CUSPARSE( cusparseCreateBlockedEll(&spA, A_rows, A_cols,
-                                           (*ellBlockSize), (*ellCols),
-                                           dA_columns, dA_values,
-                                           CUSPARSE_INDEX_32I,
-                                           CUSPARSE_INDEX_BASE_ZERO,
-                                           cuda_type) )
-
-  // allocate an external buffer if needed
-  CHECK_CUSPARSE(cusparseDenseToSparse_bufferSize(conversionHandle, matA, spA,
-                                                  CUSPARSE_DENSETOSPARSE_ALG_DEFAULT, &bufferSize))
-  CHECK_CUDA(cudaMalloc(&dBuffer, bufferSize))
-
-  // execute Sparse to Dense conversion
-  CHECK_CUSPARSE(cusparseDenseToSparse_analysis(conversionHandle, matA, spA, CUSPARSE_DENSETOSPARSE_ALG_DEFAULT, dBuffer))
-
-  // execute Sparse to Dense conversion
-  CHECK_CUSPARSE(cusparseDenseToSparse_convert(conversionHandle, matA, spA, CUSPARSE_DENSETOSPARSE_ALG_DEFAULT, dBuffer))
-  /* [END] Dense to sparse conversion */
-
-
-  CHECK_CUDA(cudaFree(dBuffer))
-  // CHECK_CUDA(cudaFree(dA_values))
-  // CHECK_CUSPARSE(cusparseDestroyDnMat(matA))
-  CHECK_CUSPARSE(cusparseDestroy(conversionHandle))
-  // free(ellColInd);
-  // free(ellValue);
-  return EXIT_SUCCESS;
-}
+__host__ int convert_to_blockedell(torch::Tensor A            /* in */,
+                                   cusparseDnMatDescr_t &matA /* in */,
+                                   cusparseSpMatDescr_t &spA  /* out */,
+                                   int *dA_columns            /* in */,
+                                   T *dA_values               /* in */,
+                                   T *dA_dense                /* in */,
+                                   int *ellBlockSize          /* in */,
+                                   int *ellCols               /* in */,
+                                   int *ellColInd             /* in */,
+                                   T *ellValue                /* in */);
 
 
 
-/**
- * @brief This function execute sparse matrix-matrix multiplication and stores the result in dense matric C.
- * @note If you consider B as a m x 1 vector, it's also an implementation of sparse-vector multiplication
- */
 template <typename T>
-__host__ int execute_spmm(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t B, cusparseDnMatDescr_t C, T alpha, T beta)
-{
-
-  cusparseHandle_t multiplicationHandle = NULL;
-  void* dBufferMul = NULL;
-  size_t bufferMulSize = 0;
-  CHECK_CUSPARSE( cusparseCreate(&multiplicationHandle) )
-
-  constexpr cudaDataType_t cuda_type = cuda_dtype<T>::val;
-
-  CHECK_CUSPARSE( cusparseSpMM_bufferSize(
-                  multiplicationHandle,
-                  CUSPARSE_OPERATION_NON_TRANSPOSE,
-                  CUSPARSE_OPERATION_NON_TRANSPOSE,
-                  &alpha, spA, B, &beta, C, cuda_type,
-                  CUSPARSE_SPMM_BLOCKED_ELL_ALG1, &bufferMulSize) )
-
-  CHECK_CUDA( cudaMalloc(&dBufferMul, bufferMulSize) )
-
-  // execute SpMM
-  CHECK_CUSPARSE( cusparseSpMM(multiplicationHandle,
-                               CUSPARSE_OPERATION_NON_TRANSPOSE,
-                               CUSPARSE_OPERATION_NON_TRANSPOSE,
-                               &alpha, spA, B, &beta, C, cuda_type,
-                               CUSPARSE_SPMM_BLOCKED_ELL_ALG1, dBufferMul) )
-  CHECK_CUDA( cudaFree(dBufferMul) )
-  return EXIT_SUCCESS;
-}
+__host__ int execute_spmm(cusparseSpMatDescr_t spA /* in */,
+                          cusparseDnMatDescr_t B   /* in */,
+                          cusparseDnMatDescr_t C   /* out */,
+                          T alpha                  /* in */,
+                          T beta                   /* in */);
 
 
 
 /* Returns the number of non-zero values of matrix float *mat. rows and cols are the dimensions of *mat, and n_non_zeroes is the return value (should be initialized to 0 before calling this function). */
-__host__ inline void
-count_non_zeroes(float *mat, unsigned int rows, unsigned int cols, unsigned int *n_non_zeroes)
+template <typename T>
+__host__ inline void count_non_zeroes(T *mat, unsigned int rows, unsigned int cols, unsigned int *n_non_zeroes)
 {
-  const float eps = 1e-9;
+  const T eps = 1e-9;
   // number of non zero values in *mat
 
   for (unsigned int i = 0; i < rows; ++i)
   {
     for (unsigned int j = 0; j < cols; ++j)
     {
-      float t = 0.0f;
+      T t = T(0);
       t += mat[i * cols + j];
       if (fabs(t) > eps)
       {
@@ -247,17 +154,17 @@ count_non_zeroes(float *mat, unsigned int rows, unsigned int cols, unsigned int 
 }
 
 /* Returns a contiguous array containing all the non zero values in *mat. The return array must be pre allocated, its size is the value returned by count_non_zeroes */
-__host__ inline void
-extract_non_zeros(float *mat, unsigned int rows, unsigned int cols, float *non_zero_values)
+template <typename T>
+__host__ inline void extract_non_zeros(T *mat, unsigned int rows, unsigned int cols, T *non_zero_values)
 {
-  const float eps = 1e-9;
+  const T eps = 1e-9;
   unsigned int idx = 0;
 
   for (unsigned int i = 0; i < rows; ++i)
   {
     for (unsigned int j = 0; j < cols; ++j)
     {
-      float t = 0.0f;
+      T t = T(0);
       t += mat[i * cols + j];
       if (fabs(t) > eps)
       {

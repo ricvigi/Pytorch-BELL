@@ -1,22 +1,18 @@
-#include <torch/torch.h>
-#include <omp.h>
-#include <iostream>
-#include <cmath>
 #include "myHeaders.cuh"
 
 
 
-int computeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernelSize)
+__host__ int computeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernelSize)
 {
-    int nBlocksH, nBlocksW, res;
-    torch::Tensor B, bSums;
-    nBlocksH = rows / kernelSize;
-    nBlocksW = cols / kernelSize;
-    B = A.view({nBlocksH, kernelSize, nBlocksW, kernelSize});
-    B = B.permute({0, 2, 1, 3});
-    bSums = B.sum({2, 3});
-    res = (bSums == 0).sum().item<int>();
-    return res;
+  int nBlocksH, nBlocksW, res;
+  torch::Tensor B, bSums;
+  nBlocksH = rows / kernelSize;
+  nBlocksW = cols / kernelSize;
+  B = A.view({nBlocksH, kernelSize, nBlocksW, kernelSize});
+  B = B.permute({0, 2, 1, 3});
+  bSums = B.sum({2, 3});
+  res = (bSums == 0).sum().item<int>();
+  return res;
 }
 
 /**
@@ -30,20 +26,20 @@ int computeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernelSize)
  * @return int, the number of zero blocks of size kernelSize x kernelSize in tensor A
  */
 template <typename T>
-int iterativeComputeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernelSize)
+__host__ int iterativeComputeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernelSize)
 {
   int count = 0;
   int nBlocksH = rows / kernelSize;
   int nBlocksW = cols / kernelSize;
   std::vector<T*> rowPointers (rows);
-# pragma omp parallel
+  # pragma omp parallel
   {
-#   pragma omp for
+    #   pragma omp for
     for (int i = 0; i < rows; ++i)
     {
       rowPointers[i] = A[i].contiguous().data_ptr<T>();
     }
-#   pragma omp for collapse(2) reduction(+:count)
+    #   pragma omp for collapse(2) reduction(+:count)
     for (int i = 0; i < nBlocksH; ++i)
     {
       for (int j = 0; j < nBlocksW; ++j)
@@ -79,7 +75,7 @@ int iterativeComputeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernel
  *
  * @return returns a torch::Tensor object, that stores the sum of the values of all blocks of size kernelSize x kernelSize in A. From this object we will compute ellCols, but since we need it elsewhere, we return this object instead
  */
-torch::Tensor computeEllCols (torch::Tensor& A, int rows, int cols, int kernelSize)
+__host__ torch::Tensor computeEllCols (torch::Tensor& A, int rows, int cols, int kernelSize)
 {
   int nBlocksH, nBlocksW;
   torch::Tensor B, bSums;
@@ -102,7 +98,7 @@ torch::Tensor computeEllCols (torch::Tensor& A, int rows, int cols, int kernelSi
  * @return returns a torch::Tensor object, that stores the sum of the values of all blocks of size kernelSize x kernelSize in A. From this object we will compute ellCols, but since we need it elsewhere, we return this object instead
  */
 template <typename T>
-torch::Tensor iterativeComputeEllCols (torch::Tensor& A, int rows, int cols, int kernelSize)
+__host__ torch::Tensor iterativeComputeEllCols (torch::Tensor& A, int rows, int cols, int kernelSize)
 {
   int nBlocksH = rows / kernelSize;
   int nBlocksW = cols / kernelSize;
@@ -112,14 +108,14 @@ torch::Tensor iterativeComputeEllCols (torch::Tensor& A, int rows, int cols, int
   std::vector<T*> rowPointers (rows);
   auto del = [](void* ptr) { free(ptr); };
 
-# pragma omp parallel
+  # pragma omp parallel
   {
-#   pragma omp for
+    #   pragma omp for
     for (int i = 0; i < rows; ++i)
     {
       rowPointers[i] = A[i].contiguous().data_ptr<T>();
     }
-#   pragma omp for collapse(2)
+    #   pragma omp for collapse(2)
     for (int i = 0; i < nBlocksH; ++i)
     {
       for (int j = 0; j < nBlocksW; ++j)
@@ -156,21 +152,21 @@ torch::Tensor iterativeComputeEllCols (torch::Tensor& A, int rows, int cols, int
  * @return void. The return value of this function is ellColInd
  */
 template <typename T>
-void getEllColInd (torch::Tensor &bSums, int *ellColInd, int rows, int cols)
+__host__ void getEllColInd (torch::Tensor &bSums, int *ellColInd, int rows, int cols)
 {
   int idx, rowSize;
   T val;
 
   std::vector<T*> rowPointers(rows);
-# pragma omp parallel shared(ellColInd) private(idx, rowSize, val)
+  # pragma omp parallel shared(ellColInd) private(idx, rowSize, val)
   {
-#   pragma omp for
+    #   pragma omp for
     for (int i = 0; i < rows; ++i)
     {
       rowPointers[i] = bSums[i].contiguous().data_ptr<T>();
     }
 
-#   pragma omp for
+    #   pragma omp for
     for (int i = 0; i < rows; ++i)
     {
       idx = 0;
@@ -215,20 +211,20 @@ void getEllColInd (torch::Tensor &bSums, int *ellColInd, int rows, int cols)
  * @return void. The return value of this function is ellValue
  */
 template <typename T>
-void getEllValues (torch::Tensor& A, T *ellValue, int *ellColInd, int rows, int cols, int ellBlockSize)
+__host__ void getEllValues (torch::Tensor& A, T *ellValue, int *ellColInd, int rows, int cols, int ellBlockSize)
 {
   int blockCol, dstIndex, rowIndex, colIndex;
   std::vector<T*> rowPointers(rows * ellBlockSize);
 
-# pragma omp parallel shared(rowPointers, A, ellColInd, ellValue) private(blockCol, dstIndex, rowIndex, colIndex)
+  # pragma omp parallel shared(rowPointers, A, ellColInd, ellValue) private(blockCol, dstIndex, rowIndex, colIndex)
   {
-#   pragma omp for
+    #   pragma omp for
     for (int i = 0; i < rows * ellBlockSize; ++i)
     {
       rowPointers[i] = A[i].contiguous().data_ptr<T>();
     }
 
-#   pragma omp for collapse(2)
+    #   pragma omp for collapse(2)
     for (int i = 0; i < rows; ++i)
     {
       for (int j = 0; j < cols; ++j)
@@ -267,7 +263,7 @@ void getEllValues (torch::Tensor& A, T *ellValue, int *ellColInd, int rows, int 
  * @return int EXIT_SUCCESS or int EXIT_FAILURE
  */
 template <typename T>
-int getBellParams (torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCols, int*& ellColInd, T*& ellValue)
+__host__ int getBellParams (torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCols, int*& ellColInd, T*& ellValue)
 {
   /* Variable declarations */
   int i, j;
@@ -330,7 +326,7 @@ int getBellParams (torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCo
 
   start = omp_get_wtime();
   tStart = omp_get_wtime();
-# pragma omp parallel shared(zeroCount, ellBlockSize, localZeroCount)
+  # pragma omp parallel shared(zeroCount, ellBlockSize, localZeroCount)
   {
     int localKernelSize;
     int localZeroBlocks;
@@ -342,28 +338,28 @@ int getBellParams (torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCo
     localBestZeroes = 0;
 
     /* NOTE: Should we use a guided schedule for this loop parallelism?
-    /* ATTENTION: This routine might be a waste of time... remember that if blocksize 2*n has < zeroes than blocksize
-    /* n, it might be pointless to continue... */
-#   pragma omp for
-    for (i = 0; i < divisorsSize; ++i)
-    {
-      localKernelSize = divisors[i];
-      localZeroBlocks = iterativeComputeZeroBlocks<T>(A, x, y, localKernelSize);
-      if (localZeroBlocks > 0)
-      {
-        localNZeroes = localZeroBlocks * localKernelSize * localKernelSize;
-        if (localBestZeroes < localNZeroes)
-        {
-          localBestZeroes = localNZeroes;
-          localBestKernel = localKernelSize;
-        }
-      } else
-      {
-        continue;
-      }
-    }
-    localZeroCount[id] = localBestZeroes;
-    localKernels[id] = localBestKernel;
+     *    /* ATTENTION: This routine might be a waste of time... remember that if blocksize 2*n has < zeroes than blocksize
+     *    /* n, it might be pointless to continue... */
+     #   pragma omp for
+     for (i = 0; i < divisorsSize; ++i)
+     {
+       localKernelSize = divisors[i];
+       localZeroBlocks = iterativeComputeZeroBlocks<T>(A, x, y, localKernelSize);
+       if (localZeroBlocks > 0)
+       {
+         localNZeroes = localZeroBlocks * localKernelSize * localKernelSize;
+         if (localBestZeroes < localNZeroes)
+         {
+           localBestZeroes = localNZeroes;
+           localBestKernel = localKernelSize;
+         }
+       } else
+       {
+         continue;
+       }
+     }
+     localZeroCount[id] = localBestZeroes;
+     localKernels[id] = localBestKernel;
   }
 
   /* Get the best block size value */
@@ -390,7 +386,7 @@ int getBellParams (torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCo
   tStart = omp_get_wtime();
   /* Now get ellCols, the actual number of columns in the BELL format */
   bSums = computeEllCols(A, x, y, ellBlockSize);
-  // bSums = iterativeComputeEllCols(A, x, y, ellBlockSize);
+  // bSums = iterativeComputeEllCols<T>(A, x, y, ellBlockSize);
   ellCols = (bSums != 0).sum(1).max().item<int>();
   tEnd = omp_get_wtime();
   printf("computeEllCols time: %f\n", tEnd - tStart);
@@ -442,27 +438,154 @@ int getBellParams (torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCo
   return EXIT_SUCCESS;
 }
 
+/**
+ * @brief converts matrix A (pointer) into blockedell format and returns a descriptor object of the blockedell format
+ */
+template <typename T>
+__host__ int convert_to_blockedell(torch::Tensor A            /* in */, // ATTENTION: passing by reference or value?
+                                   cusparseDnMatDescr_t &matA /* in */,
+                                   cusparseSpMatDescr_t &spA  /* out */,
+                                   int *dA_columns            /* in */,
+                                   T *dA_values               /* in */,
+                                   T *dA_dense                /* in */,
+                                   int *ellBlockSize          /* in */,
+                                   int *ellCols               /* in */,
+                                   int *ellColInd             /* in */,
+                                   T *ellValue                /* in */)
+{
+  unsigned int A_rows = A.size(0);
+  unsigned int A_cols = A.size(1);
+  printf("%d %d\n", A_rows, A_cols);
+  unsigned int lda = A_cols;
+
+  constexpr cudaDataType_t cuda_type = cuda_dtype<T>::val;
+
+  T *hA = A.contiguous().data_ptr<T>();
+
+  // Get the ellColInd array for matrix A
+  int err;
+
+
+  err = getBellParams<T>(A, A_rows, A_cols, *ellBlockSize, *ellCols, ellColInd, ellValue);
+  if (err != 0)
+  {
+    printf("Error code %d, exiting!\n", err);
+    fflush(stdout);
+    return err;
+  }
+
+  // ATTENTION: ellCols is usually considered to be the number of columns in ell format, NOT the number of blocks (of the ell format).
+  *ellCols = (*ellBlockSize) * (*ellCols);
+  // Device memory management
+  // printf("ellCols: %d, n_non_zeroes: %d\n", ellCols, n_non_zeroes);
+  int ellColInd_size = A_rows * (*ellCols);
+  cudaStream_t stream;
+  CHECK_CUDA(cudaStreamCreate(&stream))
+
+  CHECK_CUDA(cudaMallocAsync((void**) &dA_dense, A_rows * A_cols * sizeof(T), stream))
+  CHECK_CUDA(cudaMallocAsync((void**) &dA_columns, ellColInd_size * sizeof(int), stream))
+  CHECK_CUDA(cudaMallocAsync((void**) &dA_values, A_rows * (*ellCols) * sizeof(T), stream))
+  CHECK_CUDA(cudaMemcpyAsync(dA_dense, hA, A_rows * A_cols * sizeof(T), cudaMemcpyHostToDevice, stream))
+  CHECK_CUDA(cudaMemcpyAsync(dA_columns, ellColInd, ellColInd_size * sizeof(int), cudaMemcpyHostToDevice, stream))
+  CHECK_CUDA(cudaMemsetAsync(dA_values, 0.0f, A_rows * (*ellCols) * sizeof(T), stream))
+  CHECK_CUDA(cudaStreamSynchronize(stream))
+
+  /* [BEGIN] Dense to sparse conversion */
+  // To create a conversion you need a dense matrix to convert it into a sparse matrix. If you want to store matrix A
+  // in a sparse format, you need to convert A's dense representation to sparse!
+  cusparseHandle_t conversionHandle = NULL;
+  void *dBuffer    = NULL;
+  size_t bufferSize = 0;
+  CHECK_CUSPARSE(cusparseCreate(&conversionHandle))
+
+  /* ATTENTION: remember that leading dimension is number of columns if we use CUSPARSE_ORDER_ROW, and vice versa */
+  // Create dense matrix A
+  CHECK_CUSPARSE( cusparseCreateDnMat(&matA, A_rows, A_cols, lda, dA_dense,
+                                      cuda_type, CUSPARSE_ORDER_ROW) )
+
+  // Create sparse matrix B in Blocked ELL format
+  CHECK_CUSPARSE( cusparseCreateBlockedEll(&spA, A_rows, A_cols,
+                                           (*ellBlockSize), (*ellCols),
+                                           dA_columns, dA_values,
+                                           CUSPARSE_INDEX_32I,
+                                           CUSPARSE_INDEX_BASE_ZERO,
+                                           cuda_type) )
+
+  // allocate an external buffer if needed
+  CHECK_CUSPARSE(cusparseDenseToSparse_bufferSize(conversionHandle, matA, spA,
+                                                  CUSPARSE_DENSETOSPARSE_ALG_DEFAULT, &bufferSize))
+  CHECK_CUDA(cudaMalloc(&dBuffer, bufferSize))
+
+  // execute Sparse to Dense conversion
+  CHECK_CUSPARSE(cusparseDenseToSparse_analysis(conversionHandle, matA, spA, CUSPARSE_DENSETOSPARSE_ALG_DEFAULT, dBuffer))
+
+  // execute Sparse to Dense conversion
+  CHECK_CUSPARSE(cusparseDenseToSparse_convert(conversionHandle, matA, spA, CUSPARSE_DENSETOSPARSE_ALG_DEFAULT, dBuffer))
+  /* [END] Dense to sparse conversion */
+
+
+  CHECK_CUDA(cudaFree(dBuffer))
+  CHECK_CUSPARSE(cusparseDestroy(conversionHandle))
+  return EXIT_SUCCESS;
+}
+
+/**
+ * @brief This function execute sparse matrix-matrix multiplication and stores the result in dense matric C.
+ * @note If you consider B as a m x 1 vector, it's also an implementation of sparse-vector multiplication
+ */
+template <typename T>
+__host__ int execute_spmm(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t B, cusparseDnMatDescr_t C, T alpha, T beta)
+{
+  cusparseHandle_t multiplicationHandle = NULL;
+  void* dBufferMul = NULL;
+  size_t bufferMulSize = 0;
+  CHECK_CUSPARSE( cusparseCreate(&multiplicationHandle) )
+
+  constexpr cudaDataType_t cuda_type = cuda_dtype<T>::val;
+
+  CHECK_CUSPARSE( cusparseSpMM_bufferSize(
+                  multiplicationHandle,
+                  CUSPARSE_OPERATION_NON_TRANSPOSE,
+                  CUSPARSE_OPERATION_NON_TRANSPOSE,
+                  &alpha, spA, B, &beta, C, cuda_type,
+                  CUSPARSE_SPMM_BLOCKED_ELL_ALG1, &bufferMulSize) )
+
+  CHECK_CUDA( cudaMalloc(&dBufferMul, bufferMulSize) )
+
+  // execute SpMM
+  CHECK_CUSPARSE( cusparseSpMM(multiplicationHandle,
+                               CUSPARSE_OPERATION_NON_TRANSPOSE,
+                               CUSPARSE_OPERATION_NON_TRANSPOSE,
+                               &alpha, spA, B, &beta, C, cuda_type,
+                               CUSPARSE_SPMM_BLOCKED_ELL_ALG1, dBufferMul) )
+  CHECK_CUDA( cudaFree(dBufferMul) )
+  return EXIT_SUCCESS;
+}
+
+
 /* [BEGIN] Function instantiations */
 
-template int iterativeComputeZeroBlocks<float>(torch::Tensor&, int, int, int);
-template int iterativeComputeZeroBlocks<double>(torch::Tensor&, int, int, int);
-// template int iterativeComputeZeroBlocks<at::Half>(torch::Tensor&, int, int, int);
+template __host__ int iterativeComputeZeroBlocks<float>(torch::Tensor&, int, int, int);
+template __host__ int iterativeComputeZeroBlocks<double>(torch::Tensor&, int, int, int);
 
-template torch::Tensor iterativeComputeEllCols<float>(torch::Tensor&, int, int, int);
-template torch::Tensor iterativeComputeEllCols<double>(torch::Tensor&, int, int, int);
-// template torch::Tensor iterativeComputeEllCols<at::Half>(torch::Tensor&, int, int, int);
+template __host__ torch::Tensor iterativeComputeEllCols<float>(torch::Tensor&, int, int, int);
+template __host__ torch::Tensor iterativeComputeEllCols<double>(torch::Tensor&, int, int, int);
 
-template void getEllColInd<float>(torch::Tensor&, int*, int, int);
-template void getEllColInd<double>(torch::Tensor&, int*, int, int);
-// template void getEllColInd<at::Half>(torch::Tensor&, int*, int, int);
+template __host__ void getEllColInd<float>(torch::Tensor&, int*, int, int);
+template __host__ void getEllColInd<double>(torch::Tensor&, int*, int, int);
 
-template void getEllValues<float>(torch::Tensor&, float*, int*, int, int, int);
-template void getEllValues<double>(torch::Tensor&, double*, int*, int, int, int);
-// template void getEllValues<at::Half>(torch::Tensor&, Half*, int*, int, int, int);
+template __host__ void getEllValues<float>(torch::Tensor&, float*, int*, int, int, int);
+template __host__ void getEllValues<double>(torch::Tensor&, double*, int*, int, int, int);
 
-template int getBellParams<float>(torch::Tensor&, int, int, int&, int&, int*&, float*&);
-template int getBellParams<double>(torch::Tensor&, int, int, int&, int&, int*&, double*&);
-// template int getBellParams<at::Half>(torch::Tensor&, int, int, int&, int&, int*&, Half*&);
+template __host__ int getBellParams<float>(torch::Tensor&, int, int, int&, int&, int*&, float*&);
+template __host__ int getBellParams<double>(torch::Tensor&, int, int, int&, int&, int*&, double*&);
+
+template __host__ int convert_to_blockedell<double>(torch::Tensor A , cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, int *dA_columns, double *dA_values,
+                                                    double *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, double *ellValue);
+template __host__ int convert_to_blockedell<float>(torch::Tensor A , cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, int *dA_columns, float *dA_values,
+                                                   float *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, float *ellValue);
+template __host__ int execute_spmm<double>(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t B, cusparseDnMatDescr_t C, double alpha, double beta);
+template __host__ int execute_spmm<float>(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t B, cusparseDnMatDescr_t C, float alpha, float beta);
 
 /* [END] Function instantiations */
 
