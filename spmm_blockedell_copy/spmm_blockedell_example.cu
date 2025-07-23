@@ -1,88 +1,5 @@
 #include "myHeaders.cuh"
 
-/**
- * @brief converts matrix A (pointer) into blockedell format and returns a descriptor object of the blockedell format
- */
-__host__ int convert_to_blockedell(torch::Tensor A  /* in */, cusparseDnMatDescr_t &matA ,cusparseSpMatDescr_t &spA /* out */, int *dA_columns, float *dA_values, float *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, float *ellValue)
-{
-  unsigned int A_rows = A.size(0);
-  unsigned int A_cols = A.size(1);
-  printf("%d %d\n", A_rows, A_cols);
-  unsigned int lda = A_cols;
-
-  float *hA = A.contiguous().data_ptr<float>();
-
-  // Get the ellColInd array for matrix A
-  int err;
-
-
-  err = getBellParams(A, A_rows, A_cols, *ellBlockSize, *ellCols, ellColInd, ellValue);
-  if (err != 0)
-  {
-    printf("Error code %d, exiting!\n", err);
-    fflush(stdout);
-    return err;
-  }
-
-  // ATTENTION: ellCols is usually considered to be the number of columns in ell format, NOT the number of blocks.
-  *ellCols = (*ellBlockSize) * (*ellCols);
-  // Device memory management
-  // printf("ellCols: %d, n_non_zeroes: %d\n", ellCols, n_non_zeroes);
-  int ellColInd_size = A_rows * (*ellCols);
-  cudaStream_t stream;
-  CHECK_CUDA(cudaStreamCreate(&stream))
-
-  CHECK_CUDA(cudaMallocAsync((void**) &dA_dense, A_rows * A_cols * sizeof(float), stream))
-  CHECK_CUDA(cudaMallocAsync((void**) &dA_columns, ellColInd_size * sizeof(int), stream))
-  CHECK_CUDA(cudaMallocAsync((void**) &dA_values, A_rows * (*ellCols) * sizeof(float), stream))
-  CHECK_CUDA(cudaMemcpyAsync(dA_dense, hA, A_rows * A_cols * sizeof(float), cudaMemcpyHostToDevice, stream))
-  CHECK_CUDA(cudaMemcpyAsync(dA_columns, ellColInd, ellColInd_size * sizeof(int), cudaMemcpyHostToDevice, stream))
-  CHECK_CUDA(cudaMemsetAsync(dA_values, 0.0f, A_rows * (*ellCols) * sizeof(float), stream))
-  CHECK_CUDA(cudaStreamSynchronize(stream))
-
-  /* [BEGIN] Dense to sparse conversion */
-  // To create a conversion you need a dense matrix to convert it into a sparse matrix. If you want to store matrix A
-  // in a sparse format, you need to convert A's dense representation to sparse!
-  cusparseHandle_t conversionHandle = NULL;
-  void *dBuffer    = NULL;
-  size_t bufferSize = 0;
-  CHECK_CUSPARSE(cusparseCreate(&conversionHandle))
-
-  /* ATTENTION: remember that leading dimension is number of columns if we use CUSPARSE_ORDER_ROW, and vice versa */
-  // Create dense matrix A
-  CHECK_CUSPARSE( cusparseCreateDnMat(&matA, A_rows, A_cols, lda, dA_dense,
-                                      CUDA_R_32F, CUSPARSE_ORDER_ROW) )
-
-  // Create sparse matrix B in Blocked ELL format
-  CHECK_CUSPARSE( cusparseCreateBlockedEll(&spA, A_rows, A_cols,
-                                           (*ellBlockSize), (*ellCols),
-                                           dA_columns, dA_values,
-                                           CUSPARSE_INDEX_32I,
-                                           CUSPARSE_INDEX_BASE_ZERO,
-                                           CUDA_R_32F) )
-
-  // allocate an external buffer if needed
-  CHECK_CUSPARSE(cusparseDenseToSparse_bufferSize(conversionHandle, matA, spA,
-                                                  CUSPARSE_DENSETOSPARSE_ALG_DEFAULT, &bufferSize))
-  CHECK_CUDA(cudaMalloc(&dBuffer, bufferSize))
-
-  // execute Sparse to Dense conversion
-  CHECK_CUSPARSE(cusparseDenseToSparse_analysis(conversionHandle, matA, spA, CUSPARSE_DENSETOSPARSE_ALG_DEFAULT, dBuffer))
-
-  // execute Sparse to Dense conversion
-  CHECK_CUSPARSE(cusparseDenseToSparse_convert(conversionHandle, matA, spA, CUSPARSE_DENSETOSPARSE_ALG_DEFAULT, dBuffer))
-  /* [END] Dense to sparse conversion */
-
-
-  // CHECK_CUDA(cudaFree(dA_columns))
-  // CHECK_CUDA(cudaFree(dA_values))
-  // CHECK_CUSPARSE(cusparseDestroyDnMat(matA))
-  CHECK_CUSPARSE(cusparseDestroy(conversionHandle))
-  // free(ellColInd);
-  // free(ellValue);
-  return EXIT_SUCCESS;
-}
-
 
 int
 main(int argc, char** argv)
@@ -169,7 +86,7 @@ main(int argc, char** argv)
   float *dA_values = nullptr;
   float *dA_dense = nullptr;
 
-  convert_to_blockedell(A, matA, matSpA, dA_columns, dA_values, dA_dense, &ellBlockSize, &ellCols, ellColInd, ellValue);
+  convert_to_blockedell<float>(A, matA, matSpA, dA_columns, dA_values, dA_dense, &ellBlockSize, &ellCols, ellColInd, ellValue);
   // void*                dBuffer    = NULL;
   // size_t               bufferSize = 0;
   // CHECK_CUSPARSE(cusparseCreate(&conversionHandle))

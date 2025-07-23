@@ -6,8 +6,7 @@
 
 
 
-int
-computeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernelSize)
+int computeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernelSize)
 {
     int nBlocksH, nBlocksW, res;
     torch::Tensor B, bSums;
@@ -30,19 +29,19 @@ computeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernelSize)
  *
  * @return int, the number of zero blocks of size kernelSize x kernelSize in tensor A
  */
-int
-iterativeComputeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernelSize)
+template <typename T>
+int iterativeComputeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernelSize)
 {
   int count = 0;
   int nBlocksH = rows / kernelSize;
   int nBlocksW = cols / kernelSize;
-  std::vector<float*> rowPointers (rows);
+  std::vector<T*> rowPointers (rows);
 # pragma omp parallel
   {
 #   pragma omp for
     for (int i = 0; i < rows; ++i)
     {
-      rowPointers[i] = A[i].contiguous().data_ptr<float>();
+      rowPointers[i] = A[i].contiguous().data_ptr<T>();
     }
 #   pragma omp for collapse(2) reduction(+:count)
     for (int i = 0; i < nBlocksH; ++i)
@@ -56,7 +55,7 @@ iterativeComputeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernelSize
           {
             int row = i * kernelSize + ii;
             int col = j * kernelSize + jj;
-            if (rowPointers[row][col] != 0.0f)
+            if (rowPointers[row][col] != T(0))
             {
               isZeroBlock = false;
               break;
@@ -80,8 +79,7 @@ iterativeComputeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernelSize
  *
  * @return returns a torch::Tensor object, that stores the sum of the values of all blocks of size kernelSize x kernelSize in A. From this object we will compute ellCols, but since we need it elsewhere, we return this object instead
  */
-torch::Tensor
-computeEllCols (torch::Tensor& A, int rows, int cols, int kernelSize)
+torch::Tensor computeEllCols (torch::Tensor& A, int rows, int cols, int kernelSize)
 {
   int nBlocksH, nBlocksW;
   torch::Tensor B, bSums;
@@ -103,15 +101,15 @@ computeEllCols (torch::Tensor& A, int rows, int cols, int kernelSize)
  *
  * @return returns a torch::Tensor object, that stores the sum of the values of all blocks of size kernelSize x kernelSize in A. From this object we will compute ellCols, but since we need it elsewhere, we return this object instead
  */
-torch::Tensor
-iterativeComputeEllCols (torch::Tensor& A, int rows, int cols, int kernelSize)
+template <typename T>
+torch::Tensor iterativeComputeEllCols (torch::Tensor& A, int rows, int cols, int kernelSize)
 {
   int nBlocksH = rows / kernelSize;
   int nBlocksW = cols / kernelSize;
   torch::Tensor bSums;
-  float* tBSums;
-  tBSums = (float*) malloc(rows*cols*sizeof(float));
-  std::vector<float*> rowPointers (rows);
+  T* tBSums;
+  tBSums = (T*) malloc(rows*cols*sizeof(T));
+  std::vector<T*> rowPointers (rows);
   auto del = [](void* ptr) { free(ptr); };
 
 # pragma omp parallel
@@ -119,21 +117,21 @@ iterativeComputeEllCols (torch::Tensor& A, int rows, int cols, int kernelSize)
 #   pragma omp for
     for (int i = 0; i < rows; ++i)
     {
-      rowPointers[i] = A[i].contiguous().data_ptr<float>();
+      rowPointers[i] = A[i].contiguous().data_ptr<T>();
     }
 #   pragma omp for collapse(2)
     for (int i = 0; i < nBlocksH; ++i)
     {
       for (int j = 0; j < nBlocksW; ++j)
       {
-        float sum = 0.0f;
+        T sum = T(0);
         for (int ii = 0; ii < kernelSize; ++ii)
         {
           for (int jj = 0; jj < kernelSize; ++jj)
           {
             int row = i * kernelSize + ii;
             int col = j * kernelSize + jj;
-            float val = rowPointers[row][col];
+            T val = rowPointers[row][col];
             sum += val;
           }
         }
@@ -143,7 +141,7 @@ iterativeComputeEllCols (torch::Tensor& A, int rows, int cols, int kernelSize)
   }
   // bSums = torch::from_blob(tBSums, {rows, cols}, torch::kFloat32).clone();
   // free(tBSums);
-  bSums = torch::from_blob(tBSums, {rows, cols}, del, torch::TensorOptions().dtype(torch::kFloat32));
+  bSums = torch::from_blob(tBSums, {rows, cols}, del, torch::TensorOptions().dtype(scalar_type<T>::val));
   return bSums;
 }
 
@@ -157,19 +155,19 @@ iterativeComputeEllCols (torch::Tensor& A, int rows, int cols, int kernelSize)
  *
  * @return void. The return value of this function is ellColInd
  */
-void
-getEllColInd (torch::Tensor &bSums, int *ellColInd, int rows, int cols)
+template <typename T>
+void getEllColInd (torch::Tensor &bSums, int *ellColInd, int rows, int cols)
 {
   int idx, rowSize;
-  float val;
+  T val;
 
-  std::vector<float*> rowPointers(rows);
+  std::vector<T*> rowPointers(rows);
 # pragma omp parallel shared(ellColInd) private(idx, rowSize, val)
   {
 #   pragma omp for
     for (int i = 0; i < rows; ++i)
     {
-      rowPointers[i] = bSums[i].contiguous().data_ptr<float>();
+      rowPointers[i] = bSums[i].contiguous().data_ptr<T>();
     }
 
 #   pragma omp for
@@ -177,12 +175,12 @@ getEllColInd (torch::Tensor &bSums, int *ellColInd, int rows, int cols)
     {
       idx = 0;
       rowSize = 0;
-      int* row = (int*) malloc(cols*sizeof(int));
-      float* bSumsRow = rowPointers[i];
+      T* row = (T*) malloc(cols*sizeof(T));
+      T* bSumsRow = rowPointers[i];
       for (int j = 0; j < bSums.size(1); ++j)
       {
         val = bSumsRow[j];
-        if (val != 0)
+        if (val != T(0))
         {
           rowSize += 1;
           row[idx] = j;
@@ -196,7 +194,7 @@ getEllColInd (torch::Tensor &bSums, int *ellColInd, int rows, int cols)
           ellColInd[i*cols + j] = row[j];
         } else
         {
-          ellColInd[i*cols + j] = -1;
+          ellColInd[i*cols + j] = T(-1);
         }
       }
       free(row);
@@ -216,18 +214,18 @@ getEllColInd (torch::Tensor &bSums, int *ellColInd, int rows, int cols)
  *
  * @return void. The return value of this function is ellValue
  */
-void
-getEllValues (torch::Tensor& A, float *ellValue, int *ellColInd, int rows, int cols, int ellBlockSize)
+template <typename T>
+void getEllValues (torch::Tensor& A, T *ellValue, int *ellColInd, int rows, int cols, int ellBlockSize)
 {
   int blockCol, dstIndex, rowIndex, colIndex;
-  std::vector<float*> rowPointers(rows * ellBlockSize);
+  std::vector<T*> rowPointers(rows * ellBlockSize);
 
 # pragma omp parallel shared(rowPointers, A, ellColInd, ellValue) private(blockCol, dstIndex, rowIndex, colIndex)
   {
 #   pragma omp for
     for (int i = 0; i < rows * ellBlockSize; ++i)
     {
-      rowPointers[i] = A[i].contiguous().data_ptr<float>();
+      rowPointers[i] = A[i].contiguous().data_ptr<T>();
     }
 
 #   pragma omp for collapse(2)
@@ -239,15 +237,15 @@ getEllValues (torch::Tensor& A, float *ellValue, int *ellColInd, int rows, int c
         for (int bi = 0; bi < ellBlockSize; ++bi)
         {
           rowIndex = i * ellBlockSize + bi;
-          float* rowA = rowPointers[rowIndex];
+          T* rowA = rowPointers[rowIndex];
           int srcOffset = ellBlockSize * blockCol;
           int dstOffset = ((i * cols + j) * ellBlockSize + bi) * ellBlockSize;
           if (blockCol != -1)
           {
-            memcpy(&ellValue[dstOffset], &rowA[srcOffset], ellBlockSize * sizeof(float));
+            memcpy(&ellValue[dstOffset], &rowA[srcOffset], ellBlockSize * sizeof(T));
           } else
           {
-            std::fill(&ellValue[dstOffset], &ellValue[dstOffset + ellBlockSize], 0.0f);
+            std::fill(&ellValue[dstOffset], &ellValue[dstOffset + ellBlockSize], T(0));
           }
         }
       }
@@ -268,12 +266,25 @@ getEllValues (torch::Tensor& A, float *ellValue, int *ellColInd, int rows, int c
  *
  * @return int EXIT_SUCCESS or int EXIT_FAILURE
  */
-int
-getBellParams (torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCols, int*& ellColInd, float*& ellValue)
+template <typename T>
+int getBellParams (torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCols, int*& ellColInd, T*& ellValue)
 {
   /* Variable declarations */
-  int i, j, kernelSize, zeroBlocks, maxZeroBlocks, zeroCount, nZeroes, *divisors, divisorsSize, rows, cols, size, colIdx, nThreads;
-  float start, end, tStart, tEnd;
+  int i, j;
+  int kernelSize;
+  int zeroBlocks;
+  int maxZeroBlocks;
+  int zeroCount;
+  int nZeroes;
+  int *divisors;
+  int divisorsSize;
+  int rows;
+  int cols;
+  int size;
+  int colIdx;
+  int nThreads;
+
+  T start, end, tStart, tEnd;
   torch::Tensor bSums;
 
   /*
@@ -285,7 +296,7 @@ getBellParams (torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCols, 
   omp_set_nested(1);
 
   /* Matrix sizes checks */
-  if (x != y)
+  if (x != y) // TODO: Change this, matrix can also not be square, although the block must be square. This implies that both x and y must be divisibile by the chosen block-size.
   {
     printf("Matrix must be square\n");
     fflush(stdout);
@@ -321,7 +332,12 @@ getBellParams (torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCols, 
   tStart = omp_get_wtime();
 # pragma omp parallel shared(zeroCount, ellBlockSize, localZeroCount)
   {
-    int localKernelSize, localZeroBlocks, localNZeroes, localBestZeroes, localBestKernel, id;
+    int localKernelSize;
+    int localZeroBlocks;
+    int localNZeroes;
+    int localBestZeroes;
+    int localBestKernel;
+    int id;
     id = omp_get_thread_num();
     localBestZeroes = 0;
 
@@ -332,7 +348,7 @@ getBellParams (torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCols, 
     for (i = 0; i < divisorsSize; ++i)
     {
       localKernelSize = divisors[i];
-      localZeroBlocks = iterativeComputeZeroBlocks(A, x, y, localKernelSize);
+      localZeroBlocks = iterativeComputeZeroBlocks<T>(A, x, y, localKernelSize);
       if (localZeroBlocks > 0)
       {
         localNZeroes = localZeroBlocks * localKernelSize * localKernelSize;
@@ -387,7 +403,7 @@ getBellParams (torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCols, 
 
   tStart = omp_get_wtime();
   /* Create the ellColInd array */
-  getEllColInd(bSums, ellColInd, rows, cols);
+  getEllColInd<T>(bSums, ellColInd, rows, cols);
   tEnd = omp_get_wtime();
   printf("getEllColInd time: %f\n", tEnd - tStart);
 
@@ -397,9 +413,9 @@ getBellParams (torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCols, 
   /* NOTE: OLD memory formula. If something breaks it might be due to the new one down below */
   // ellValue = (float*) malloc((rows*cols*ellBlockSize*ellBlockSize)*sizeof(float));
   /* NEW FORMULA */
-  ellValue = (float*) malloc((x*ellCols*ellBlockSize)*sizeof(float));
+  ellValue = (T*) malloc((x*ellCols*ellBlockSize)*sizeof(T));
 
-  getEllValues(A, ellValue, ellColInd, rows, cols, ellBlockSize);
+  getEllValues<T>(A, ellValue, ellColInd, rows, cols, ellBlockSize);
   // getEllValues(A, ellValue, ellColInd);
   tEnd = omp_get_wtime();
   printf("getEllValues time: %f\n", tEnd - tStart);
@@ -425,3 +441,28 @@ getBellParams (torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCols, 
   free(divisors);
   return EXIT_SUCCESS;
 }
+
+/* [BEGIN] Function instantiations */
+
+template int iterativeComputeZeroBlocks<float>(torch::Tensor&, int, int, int);
+template int iterativeComputeZeroBlocks<double>(torch::Tensor&, int, int, int);
+// template int iterativeComputeZeroBlocks<at::Half>(torch::Tensor&, int, int, int);
+
+template torch::Tensor iterativeComputeEllCols<float>(torch::Tensor&, int, int, int);
+template torch::Tensor iterativeComputeEllCols<double>(torch::Tensor&, int, int, int);
+// template torch::Tensor iterativeComputeEllCols<at::Half>(torch::Tensor&, int, int, int);
+
+template void getEllColInd<float>(torch::Tensor&, int*, int, int);
+template void getEllColInd<double>(torch::Tensor&, int*, int, int);
+// template void getEllColInd<at::Half>(torch::Tensor&, int*, int, int);
+
+template void getEllValues<float>(torch::Tensor&, float*, int*, int, int, int);
+template void getEllValues<double>(torch::Tensor&, double*, int*, int, int, int);
+// template void getEllValues<at::Half>(torch::Tensor&, Half*, int*, int, int, int);
+
+template int getBellParams<float>(torch::Tensor&, int, int, int&, int&, int*&, float*&);
+template int getBellParams<double>(torch::Tensor&, int, int, int&, int&, int*&, double*&);
+// template int getBellParams<at::Half>(torch::Tensor&, int, int, int&, int&, int*&, Half*&);
+
+/* [END] Function instantiations */
+
