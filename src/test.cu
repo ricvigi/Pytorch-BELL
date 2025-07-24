@@ -324,7 +324,9 @@ __host__ int run_int<int8_t>(int argc, char **argv)
   A.masked_fill_(A < T(threshold), T(0));
   std::cout << A << std::endl;
   torch::Tensor C = torch::zeros({A_rows, B_cols}, torch::dtype(torch::kInt32));
+  std::cout << C << std::endl;
   torch::Tensor vector_Y = torch::zeros({A_rows}, torch::dtype(torch::kInt32));
+  std::cout << vector_Y << std::endl;
 
   T alpha = T(1);
   T beta  = T(0);
