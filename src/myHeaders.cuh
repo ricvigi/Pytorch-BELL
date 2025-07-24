@@ -100,6 +100,7 @@ struct scalar_type<int>
 };
 
 
+
 template <typename T>
 __host__ int getBellParams(torch::Tensor& A,         /* in */
                            int x,                    /* in */

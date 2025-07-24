@@ -294,7 +294,7 @@ __host__ int run_int(int argc, char **argv)
 }
 
 template <>
-__host__ int run_int<int8_t>(int argc, char **argv)
+__host__ int run_int<int>(int argc, char **argv)
 {
   // ----------------------------- ATTENTION -----------------------------
   // if A and B are int8_t, to use spmm C must be of type CUDA_R_32I, i.e. int
