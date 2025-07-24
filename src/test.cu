@@ -404,7 +404,7 @@ __host__ int run_int<int8_t>(int argc, char **argv)
   int *dA_columns = nullptr;
   T *dA_values = nullptr;
   T *dA_dense = nullptr;
-
+  std::cout << "11.5" << std::endl;
   convert_to_blockedell<T>(A, matA, matSpA, dA_columns, dA_values, dA_dense, &ellBlockSize, &ellCols, ellColInd, ellValue);
   std::cout << "12" << std::endl;
   /* [END] Dense to sparse conversion */
