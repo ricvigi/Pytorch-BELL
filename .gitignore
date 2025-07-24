@@ -1,7 +1,9 @@
+
 .flake8
 *.pdf
 *.txt
 desensiPapers
+*.sbatch
 */libtorch
 *.o
 *findBellParamsCUDA
