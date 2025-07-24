@@ -149,6 +149,7 @@ __host__ int run(int argc, char **argv)
 
 __host__ int run_int(int argc, char **argv)
 {
+  printf("Entered\n");
   using T = int;
  // Host problem definition
   unsigned int A_rows = atoi(argv[1]);
