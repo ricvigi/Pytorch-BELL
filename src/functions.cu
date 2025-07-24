@@ -433,13 +433,13 @@ __host__ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, in
    *
    */
 
-  // if (PRINT_DEBUG)
-  // {
-  //   std::cout << A << std::endl;
-  //   std::cout << bSums << std::endl;
-  //   printMat(ellColInd, rows, cols);
-  //   printEllValue(ellValue, rows, cols, ellBlockSize);
-  // }
+  if (PRINT_DEBUG)
+  {
+    std::cout << A << std::endl;
+    std::cout << bSums << std::endl;
+    printMat(ellColInd, rows, cols);
+    printEllValue(ellValue, rows, cols, ellBlockSize);
+  }
 
   printf("We can filter out %d zeroes with a kernel of size %d\n", zeroCount, ellBlockSize);
   printf("Matrix has %d zero blocks of size %d\n", zeroCount / (ellBlockSize*ellBlockSize), ellBlockSize);
