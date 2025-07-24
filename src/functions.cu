@@ -82,7 +82,7 @@ __host__ torch::Tensor computeEllCols (torch::Tensor& A, int rows, int cols, int
   nBlocksH = rows / kernelSize;
   nBlocksW = cols / kernelSize;
   B = A.view({nBlocksH, kernelSize, nBlocksW, kernelSize});
-  B = B.permute({0, 2, 1, 3});, torch::dtype(torch::kFloat64));
+  B = B.permute({0, 2, 1, 3}, torch::dtype(torch::kFloat64));
   return bSums;
 }
 
