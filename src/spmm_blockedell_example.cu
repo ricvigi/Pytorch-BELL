@@ -17,6 +17,7 @@ main(int argc, char** argv)
     return run_int<int8_t>(argc, argv);
   } else if (dtype == "int")
   {
+    std::cout << "running run_int<int>" << std::endl;
     return run_int<int>(argc, argv);
   } else
   {
