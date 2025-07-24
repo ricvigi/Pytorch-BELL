@@ -548,12 +548,12 @@ __host__ int convert_to_blockedell<int8_t>(torch::Tensor &A            /* in */,
                                         cusparseDnMatDescr_t &matA  /* in */,
                                         cusparseSpMatDescr_t &spA   /* out */,
                                         int *dA_columns             /* in */,
-                                        int *dA_values                /* in */,
-                                        int *dA_dense                 /* in */,
+                                        int8_t *dA_values                /* in */,
+                                        int8_t *dA_dense                 /* in */,
                                         int *ellBlockSize           /* in */,
                                         int *ellCols                /* in */,
                                         int *ellColInd              /* in */,
-                                        int *ellValue                 /* in */)
+                                        int8_t *ellValue                 /* in */)
 {
   using T = int8_t;
   unsigned int A_rows = A.size(0);
