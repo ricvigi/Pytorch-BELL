@@ -84,7 +84,10 @@ __host__ torch::Tensor computeEllCols (torch::Tensor& A, int rows, int cols, int
   B = A.view({nBlocksH, kernelSize, nBlocksW, kernelSize});
   B = B.permute({0, 2, 1, 3});
   bSums = B.sum({2,3});
-  return bSums.to(torch::dtype(torch::kFloat64));
+  std::cout << bSums << std::endl;
+  bSums = bSums.to(torch::dtype(torch::kFloat64));
+  std::cout << bSums << std::endl;
+  return bSums;
 }
 
 /**
