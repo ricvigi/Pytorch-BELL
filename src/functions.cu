@@ -544,7 +544,7 @@ __host__ int convert_to_blockedell(torch::Tensor &A            /* in */,
 
 /* ATTENTION: This is a specialization for INT type, which requires the sparse matrix to have an 8 bit integer */
 template <>
-__host__ int convert_to_blockedell<int>(torch::Tensor &A            /* in */,
+__host__ int convert_to_blockedell<int8_t>(torch::Tensor &A            /* in */,
                                         cusparseDnMatDescr_t &matA  /* in */,
                                         cusparseSpMatDescr_t &spA   /* out */,
                                         int *dA_columns             /* in */,
@@ -555,7 +555,7 @@ __host__ int convert_to_blockedell<int>(torch::Tensor &A            /* in */,
                                         int *ellColInd              /* in */,
                                         int *ellValue                 /* in */)
 {
-  using T = int;
+  using T = int8_t;
   unsigned int A_rows = A.size(0);
   unsigned int A_cols = A.size(1);
   printf("%d %d\n", A_rows, A_cols);
@@ -732,8 +732,8 @@ template __host__ int convert_to_blockedell<double>(torch::Tensor &A , cusparseD
                                                     double *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, double *ellValue);
 template __host__ int convert_to_blockedell<float>(torch::Tensor &A , cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, int *dA_columns, float *dA_values,
                                                    float *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, float *ellValue);
-template __host__ int convert_to_blockedell<int8_t>(torch::Tensor &A , cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, int *dA_columns, int8_t *dA_values,
-                                                    int8_t *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, int8_t *ellValue);
+// template __host__ int convert_to_blockedell<int8_t>(torch::Tensor &A , cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, int *dA_columns, int8_t *dA_values,
+//                                                     int8_t *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, int8_t *ellValue);
 template __host__ int convert_to_blockedell<int>(torch::Tensor &A , cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, int *dA_columns, int *dA_values,
                                                  int *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, int *ellValue);
 
