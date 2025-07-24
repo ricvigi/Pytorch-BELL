@@ -5,6 +5,7 @@ int
 main(int argc, char** argv)
 {
   std::string dtype = argv[5];
+  std::cout << dtype << std::endl;
   if (dtype == "float")
   {
     return run<float>(argc, argv);
