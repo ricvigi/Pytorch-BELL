@@ -51,7 +51,7 @@ template<typename T>
 struct cuda_dtype;
 
 template <>
-struct cuda_dtype<__half>
+struct cuda_dtype<at::Half>
 {
   static constexpr cudaDataType_t val = CUDA_R_16F;
 };
