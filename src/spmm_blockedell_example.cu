@@ -12,6 +12,9 @@ main(int argc, char **argv)
   } else if (dtype == "double")
   {
     return run<double>(argc, argv);
+  } else if (dtype == "half")
+  {
+    return run<__half>(argc, argv);
   } else if (dtype == "int")
   {
     return run_int<int>(argc, argv);

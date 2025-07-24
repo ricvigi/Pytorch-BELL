@@ -9,6 +9,7 @@
 #include <cstdlib>           // EXIT_FAILURE
 #include <iostream>
 #include <torch/torch.h>
+#include <ATen/ATen.h>
 #include <omp.h>
 #include <math.h>
 #include <cstdio>
@@ -49,6 +50,12 @@ template <typename T> int run (int argc, char **argv);
 template<typename T>
 struct cuda_dtype;
 
+template <>
+struct cuda_dtype<__half>
+{
+  static constexpr cudaDataType_t val = CUDA_R_16F;
+}
+
 template<>
 struct cuda_dtype<float>
 {
@@ -85,6 +92,12 @@ template <>
 struct scalar_type<float>
 {
   static constexpr torch::ScalarType val = torch::kFloat32;
+};
+
+template <>
+struct scalar_type<at::Half>
+{
+  static constexpr torch::ScalarType val = torch::kFloat16;
 };
 
 template <>

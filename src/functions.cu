@@ -106,7 +106,7 @@ __host__ torch::Tensor iterativeComputeEllCols (torch::Tensor& A, int rows, int 
   int nBlocksH = rows / kernelSize;
   int nBlocksW = cols / kernelSize;
   torch::Tensor bSums;
-  T* tBSums;
+  T *tBSums;
   tBSums = (T*) malloc(rows*cols*sizeof(T));
   std::vector<T*> rowPointers (rows);
   auto del = [](void* ptr) { free(ptr); };
@@ -705,26 +705,25 @@ __host__ int execute_spmv(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t vecX, c
 
 template __host__ int iterativeComputeZeroBlocks<float>(torch::Tensor&, int, int, int);
 template __host__ int iterativeComputeZeroBlocks<double>(torch::Tensor&, int, int, int);
+template __host__ int iterativeComputeZeroBlocks<__half>(torch::Tensor&, int, int, int);
 template __host__ int iterativeComputeZeroBlocks<int8_t>(torch::Tensor&, int, int, int);
 template __host__ int iterativeComputeZeroBlocks<int>(torch::Tensor&, int, int, int);
 
 template __host__ torch::Tensor iterativeComputeEllCols<float>(torch::Tensor&, int, int, int);
 template __host__ torch::Tensor iterativeComputeEllCols<double>(torch::Tensor&, int, int, int);
+template __host__ torch::Tensor iterativeComputeEllCols<__half>(torch::Tensor&, int, int, int);
 template __host__ torch::Tensor iterativeComputeEllCols<int8_t>(torch::Tensor&, int, int, int);
 template __host__ torch::Tensor iterativeComputeEllCols<int>(torch::Tensor&, int, int, int);
 
-// template __host__ void getEllColInd<float>(torch::Tensor&, int*, int, int);
-// template __host__ void getEllColInd<double>(torch::Tensor&, int*, int, int);
-// template __host__ void getEllColInd<int8_t>(torch::Tensor&, int*, int, int);
-// template __host__ void getEllColInd<int>(torch::Tensor&, int*, int, int);
-
 template __host__ void getEllValues<float>(torch::Tensor&, float*, int*, int, int, int);
 template __host__ void getEllValues<double>(torch::Tensor&, double*, int*, int, int, int);
+template __host__ void getEllValues<__half>(torch::Tensor&, __half*, int*, int, int, int);
 template __host__ void getEllValues<int8_t>(torch::Tensor&, int8_t*, int*, int, int, int);
 template __host__ void getEllValues<int>(torch::Tensor&, int*, int*, int, int, int);
 
 template __host__ int getBellParams<float>(torch::Tensor&, int, int, int&, int&, int*&, float*&);
 template __host__ int getBellParams<double>(torch::Tensor&, int, int, int&, int&, int*&, double*&);
+template __host__ int getBellParams<__half>(torch::Tensor&, int, int, int&, int&, int*&, __half*&);
 template __host__ int getBellParams<int8_t>(torch::Tensor&, int, int, int&, int&, int*&, int8_t*&);
 template __host__ int getBellParams<int>(torch::Tensor&, int, int, int&, int&, int*&, int*&);
 
@@ -732,18 +731,20 @@ template __host__ int convert_to_blockedell<double>(torch::Tensor &A , cusparseD
                                                     double *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, double *ellValue);
 template __host__ int convert_to_blockedell<float>(torch::Tensor &A , cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, int *dA_columns, float *dA_values,
                                                    float *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, float *ellValue);
-// template __host__ int convert_to_blockedell<int8_t>(torch::Tensor &A , cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, int *dA_columns, int8_t *dA_values,
-//                                                     int8_t *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, int8_t *ellValue);
+template __host__ int convert_to_blockedell<__half>(torch::Tensor &A , cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, int *dA_columns, __half *dA_values,
+                                                    __half *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, __half *ellValue);
 template __host__ int convert_to_blockedell<int>(torch::Tensor &A , cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, int *dA_columns, int *dA_values,
                                                  int *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, int *ellValue);
 
 template __host__ int execute_spmm<double>(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t B, cusparseDnMatDescr_t C, double alpha, double beta);
 template __host__ int execute_spmm<float>(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t B, cusparseDnMatDescr_t C, float alpha, float beta);
+template __host__ int execute_spmm<__half>(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t B, cusparseDnMatDescr_t C, __half alpha, __half beta);
 template __host__ int execute_spmm<int8_t>(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t B, cusparseDnMatDescr_t C, int8_t alpha, int8_t beta);
 template __host__ int execute_spmm<int>(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t B, cusparseDnMatDescr_t C, int alpha, int beta);
 
 template __host__ int execute_spmv<double>(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t vecX, cusparseDnMatDescr_t vecY, double alpha, double beta);
 template __host__ int execute_spmv<float>(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t vecX, cusparseDnMatDescr_t vecY, float alpha, float beta);
+template __host__ int execute_spmv<__half>(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t vecX, cusparseDnMatDescr_t vecY, __half alpha, __half beta);
 template __host__ int execute_spmv<int8_t>(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t vecX, cusparseDnMatDescr_t vecY, int8_t alpha, int8_t beta);
 template __host__ int execute_spmv<int>(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t vecX, cusparseDnMatDescr_t vecY, int alpha, int beta);
 
