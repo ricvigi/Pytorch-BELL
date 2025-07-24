@@ -392,7 +392,9 @@ __host__ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, in
   bSums = computeEllCols(A, x, y, ellBlockSize);
   std::cout << "1.1.35" << std::endl;
   // bSums = iterativeComputeEllCols<T>(A, x, y, ellBlockSize);
+
   ellCols = (bSums != 0.0f).sum(1).max().item<int>();
+  std::cout << "1.1.36" << std::endl;
   tEnd = omp_get_wtime();
   printf("computeEllCols time: %f\n", tEnd - tStart);
 
