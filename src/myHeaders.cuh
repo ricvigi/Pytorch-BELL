@@ -54,7 +54,7 @@ template <>
 struct cuda_dtype<__half>
 {
   static constexpr cudaDataType_t val = CUDA_R_16F;
-}
+};
 
 template<>
 struct cuda_dtype<float>
