@@ -70,7 +70,7 @@ template <>
 struct cuda_dtype<int>
 {
   static constexpr cudaDataType_t val = CUDA_R_32I;
-}
+};
 
 template <typename T>
 struct scalar_type;
