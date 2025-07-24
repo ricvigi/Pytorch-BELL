@@ -93,6 +93,12 @@ struct scalar_type<int8_t>
   static constexpr torch::ScalarType val = torch::kInt8;
 };
 
+template <>
+struct scalar_type<int>
+{
+  static constexpr torch::ScalarType val = torch::kInt32;
+};
+
 
 template <typename T>
 __host__ int getBellParams(torch::Tensor& A,         /* in */
