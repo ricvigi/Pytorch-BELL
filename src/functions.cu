@@ -812,7 +812,7 @@ template __host__ void getEllValues<int>(torch::Tensor&, int*, int*, int, int, i
 
 template __host__ int getBellParams<float>(torch::Tensor&, int, int, int&, int&, int*&, float*&);
 template __host__ int getBellParams<double>(torch::Tensor&, int, int, int&, int&, int*&, double*&);
-template __host__ int getBellParams<at::Half>(torch::Tensor&, int, int, int&, int&, int*&, at::Half*&);
+template __host__ int getBellParams<at::Half>(torch::Tensor&, int, int, int&, int&, int*&, __half*&);
 template __host__ int getBellParams<int8_t>(torch::Tensor&, int, int, int&, int&, int*&, int8_t*&);
 template __host__ int getBellParams<int>(torch::Tensor&, int, int, int&, int&, int*&, int*&);
 
