@@ -301,20 +301,20 @@ __host__ int run_int<int8_t>(int argc, char **argv)
 
   using T = int8_t;
   // Host problem definition
-  unsigned int A_rows = atoi(argv[1]);
-  unsigned int A_cols = atoi(argv[2]);
-  unsigned int threshold = atoi(argv[3]);
+  int8_t A_rows = atoi(argv[1]);
+  int8_t A_cols = atoi(argv[2]);
+  int8_t threshold = atoi(argv[3]);
   int PRINT_DEBUG = atoi(argv[4]);
 
   torch::ScalarType dtype = torch::CppTypeToScalarType<T>::value;
   constexpr cudaDataType_t cuda_type = cuda_dtype<T>::val;
 
-  unsigned int B_rows = A_cols;
-  unsigned int B_cols = A_cols;
-  unsigned int C_rows = A_rows;
-  unsigned int C_cols = B_cols;
-  unsigned int ldb = B_cols;
-  unsigned int ldc = C_cols;
+  int8_t B_rows = A_cols;
+  int8_t B_cols = A_cols;
+  int8_t C_rows = A_rows;
+  int8_t C_cols = B_cols;
+  int8_t ldb = B_cols;
+  int8_t ldc = C_cols;
 
   torch::Tensor A = torch::randint(-128, 127, {A_rows, A_cols}, torch::dtype(dtype));
   torch::Tensor B = torch::randint(-128, 127, {B_rows, B_cols}, torch::dtype(dtype));
