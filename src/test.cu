@@ -339,13 +339,13 @@ __host__ int run_int<int8_t>(int argc, char **argv)
   int *h_vector_Y = vector_Y.contiguous().data_ptr<int>();
 
   // count how many non zero values A has
-  unsigned int n_non_zeroes = 0;
-  count_non_zeroes<T>(hA, A_rows, A_cols, &n_non_zeroes);
-  printf("number of non zeroes in A: %d\n", n_non_zeroes);
+  // unsigned int n_non_zeroes = 0;
+  // count_non_zeroes<T>(hA, A_rows, A_cols, &n_non_zeroes);
+  // printf("number of non zeroes in A: %d\n", n_non_zeroes);
 
   // put the non zero values of A into a contiguous array
-  T *non_zero_values = (T*) malloc(n_non_zeroes*sizeof(T));
-  extract_non_zeros<T>(hA, A_rows, A_cols, non_zero_values);
+  // T *non_zero_values = (T*) malloc(n_non_zeroes*sizeof(T));
+  // extract_non_zeros<T>(hA, A_rows, A_cols, non_zero_values);
 
   // Get the ellColInd array for matrix A
   int ellBlockSize, ellCols;
