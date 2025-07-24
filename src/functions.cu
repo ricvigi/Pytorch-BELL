@@ -535,6 +535,7 @@ __host__ int convert_to_blockedell<int>(torch::Tensor &A            /* in */,
                                    int *ellColInd              /* in */,
                                    T *ellValue                 /* in */)
 {
+  using T = int;
   unsigned int A_rows = A.size(0);
   unsigned int A_cols = A.size(1);
   printf("%d %d\n", A_rows, A_cols);
