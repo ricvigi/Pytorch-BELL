@@ -14,9 +14,13 @@ main(int argc, char **argv)
     return run<double>(argc, argv);
   } else if (dtype == "int")
   {
-    std::cout << "running run_int<int>" << std::endl;
     return run_int<int>(argc, argv);
-  } else
+  } else if (dtype == "int8_t")
+  {
+    return run_int<int8_t>(argc, argv);
+  }
+
+  else
   {
     std::cerr << "Unsupported dtype: " << dtype << std::endl;
     return EXIT_UNSUPPORTED;
