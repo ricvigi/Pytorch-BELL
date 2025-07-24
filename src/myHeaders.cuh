@@ -186,7 +186,7 @@ __host__ inline void count_non_zeros<int>(int *mat, unsigned int rows, unsigned 
     for (unsigned int j = 0; j < cols; ++j)
     {
       int t = 0;
-      t += mat[i * cols + j]
+      t += mat[i * cols + j];
       if (abs(t) > eps)
       {
         *n_non_zeros += 1;
