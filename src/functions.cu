@@ -405,6 +405,7 @@ __host__ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, in
   /* Create the ellColInd array */
   std::cout << "1.1.4" << std::endl;
   getEllColInd<T>(bSums, ellColInd, rows, cols);
+  std::cout << "1.1.45" << std::endl;
   tEnd = omp_get_wtime();
   printf("getEllColInd time: %f\n", tEnd - tStart);
 
