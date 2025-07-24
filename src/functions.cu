@@ -335,9 +335,14 @@ __host__ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, in
     /* NOTE: Should we use a guided schedule for this loop parallelism?
      *    /* ATTENTION: This routine might be a waste of time... remember that if blocksize 2*n has < zeroes than blocksize
      *    /* n, it might be pointless to continue... */
+     #pragma omp single
+     {
+       std::cout << "1.1.1" << std::endl;
+     }
      #   pragma omp for
      for (i = 0; i < divisorsSize; ++i)
      {
+
        localKernelSize = divisors[i];
        localZeroBlocks = iterativeComputeZeroBlocks<T>(A, x, y, localKernelSize);
        if (localZeroBlocks > 0)
@@ -356,7 +361,10 @@ __host__ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, in
      localZeroCount[id] = localBestZeroes;
      localKernels[id] = localBestKernel;
   }
-
+#pragma omp single
+{
+  std::cout << "1.1.2" << std::endl;
+}
   /* Get the best block size value */
   int z, k;
   for (int i = 0; i < nThreads; ++i)
@@ -380,6 +388,7 @@ __host__ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, in
 
   tStart = omp_get_wtime();
   /* Now get ellCols, the actual number of columns in the BELL format */
+  std::cout << "1.1.3" << std::endl;
   bSums = computeEllCols(A, x, y, ellBlockSize);
   // bSums = iterativeComputeEllCols<T>(A, x, y, ellBlockSize);
   ellCols = (bSums != 0).sum(1).max().item<int>();
@@ -394,6 +403,7 @@ __host__ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, in
 
   tStart = omp_get_wtime();
   /* Create the ellColInd array */
+  std::cout << "1.1.4" << std::endl;
   getEllColInd<T>(bSums, ellColInd, rows, cols);
   tEnd = omp_get_wtime();
   printf("getEllColInd time: %f\n", tEnd - tStart);
@@ -405,7 +415,7 @@ __host__ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, in
   // ellValue = (float*) malloc((rows*cols*ellBlockSize*ellBlockSize)*sizeof(float));
   /* NEW FORMULA */
   ellValue = (T*) malloc((x*ellCols*ellBlockSize)*sizeof(T));
-
+  std::cout << "1.1.5" << std::endl;
   getEllValues<T>(A, ellValue, ellColInd, rows, cols, ellBlockSize);
   // getEllValues(A, ellValue, ellColInd);
   tEnd = omp_get_wtime();
@@ -465,7 +475,7 @@ __host__ int convert_to_blockedell(torch::Tensor &A            /* in */,
   std::cout << "1.2" << std::endl;
   if (err != 0)
   {
-    std::cout << "Error code " << err << " , exiting!" << std::endl;
+    std::cout << "Error code " << err << ",exiting!" << std::endl;
     fflush(stdout);
     return err;
   }
@@ -526,15 +536,15 @@ __host__ int convert_to_blockedell(torch::Tensor &A            /* in */,
 /* ATTENTION: This is a specialization for INT type, which requires the sparse matrix to have an 8 bit integer */
 template <>
 __host__ int convert_to_blockedell<int>(torch::Tensor &A            /* in */,
-                                   cusparseDnMatDescr_t &matA  /* in */,
-                                   cusparseSpMatDescr_t &spA   /* out */,
-                                   int *dA_columns             /* in */,
-                                   int *dA_values                /* in */,
-                                   int *dA_dense                 /* in */,
-                                   int *ellBlockSize           /* in */,
-                                   int *ellCols                /* in */,
-                                   int *ellColInd              /* in */,
-                                   int *ellValue                 /* in */)
+                                        cusparseDnMatDescr_t &matA  /* in */,
+                                        cusparseSpMatDescr_t &spA   /* out */,
+                                        int *dA_columns             /* in */,
+                                        int *dA_values                /* in */,
+                                        int *dA_dense                 /* in */,
+                                        int *ellBlockSize           /* in */,
+                                        int *ellCols                /* in */,
+                                        int *ellColInd              /* in */,
+                                        int *ellValue                 /* in */)
 {
   using T = int;
   unsigned int A_rows = A.size(0);
@@ -714,9 +724,9 @@ template __host__ int convert_to_blockedell<double>(torch::Tensor &A , cusparseD
 template __host__ int convert_to_blockedell<float>(torch::Tensor &A , cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, int *dA_columns, float *dA_values,
                                                    float *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, float *ellValue);
 template __host__ int convert_to_blockedell<int8_t>(torch::Tensor &A , cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, int *dA_columns, int8_t *dA_values,
-                                                   int8_t *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, int8_t *ellValue);
+                                                    int8_t *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, int8_t *ellValue);
 template __host__ int convert_to_blockedell<int>(torch::Tensor &A , cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, int *dA_columns, int *dA_values,
-                                                   int *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, int *ellValue);
+                                                 int *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, int *ellValue);
 
 template __host__ int execute_spmm<double>(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t B, cusparseDnMatDescr_t C, double alpha, double beta);
 template __host__ int execute_spmm<float>(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t B, cusparseDnMatDescr_t C, float alpha, float beta);
