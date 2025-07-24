@@ -418,6 +418,7 @@ __host__ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, in
   ellValue = (T*) malloc((x*ellCols*ellBlockSize)*sizeof(T));
   std::cout << "1.1.5" << std::endl;
   getEllValues<T>(A, ellValue, ellColInd, rows, cols, ellBlockSize);
+  std::cout << "1.1.55" << std::endl;
   // getEllValues(A, ellValue, ellColInd);
   tEnd = omp_get_wtime();
   printf("getEllValues time: %f\n", tEnd - tStart);
