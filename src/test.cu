@@ -166,12 +166,12 @@ __host__ int run_int(int argc, char **argv)
   unsigned int ldb = B_cols;
   unsigned int ldc = C_cols;
 
-  torch::Tensor A = torch::randint(-128, 127, {A_rows, A_cols}).to(dtype);
-  torch::Tensor B = torch::randint(-128, 127, {B_rows, B_cols}).to(dtype);
-  torch::Tensor vector_X = torch::randint(-128, 127, {A_cols}).to(dtype);
+  torch::Tensor A = torch::randint(-128, 127, {A_rows, A_cols}, torch::dtype(dtype));
+  torch::Tensor B = torch::randint(-128, 127, {B_rows, B_cols}, torch::dtype(dtype)));
+  torch::Tensor vector_X = torch::randint(-128, 127, {A_cols}, torch::dtype(dtype));
   A.masked_fill_(A < T(threshold), T(0));
-  torch::Tensor C = torch::zeros({A_rows, B_cols}).to(dtype);
-  torch::Tensor vector_Y = torch::zeros({A_rows}).to(dtype);
+  torch::Tensor C = torch::zeros({A_rows, B_cols}, torch::dtype(dtype));
+  torch::Tensor vector_Y = torch::zeros({A_rows}, torch::dtype(dtype));
 
   T alpha = T(1);
   T beta  = T(0);
@@ -294,12 +294,12 @@ __host__ int run_int(int argc, char **argv)
 }
 
 template <>
-__host__ int run_int<int>(int argc, char **argv)
+__host__ int run_int<int8_t>(int argc, char **argv)
 {
   // ----------------------------- ATTENTION -----------------------------
   // if A and B are int8_t, to use spmm C must be of type CUDA_R_32I, i.e. int
 
-  using T = int;
+  using T = int8_t;
   // Host problem definition
   unsigned int A_rows = atoi(argv[1]);
   unsigned int A_cols = atoi(argv[2]);
@@ -316,12 +316,12 @@ __host__ int run_int<int>(int argc, char **argv)
   unsigned int ldb = B_cols;
   unsigned int ldc = C_cols;
 
-  torch::Tensor A = torch::randint(-128, 127, {A_rows, A_cols}).to(dtype);
-  torch::Tensor B = torch::randint(-128, 127, {B_rows, B_cols}).to(dtype);
-  torch::Tensor vector_X = torch::randint(-128, 127, {A_cols}).to(dtype);
+  torch::Tensor A = torch::randint(-128, 127, {A_rows, A_cols}, torch::dtype(dtype));
+  torch::Tensor B = torch::randint(-128, 127, {B_rows, B_cols}, torch::dtype(dtype));
+  torch::Tensor vector_X = torch::randint(-128, 127, {A_cols}, torch::dtype(dtype));
   A.masked_fill_(A < T(threshold), T(0));
-  torch::Tensor C = torch::zeros({A_rows, B_cols}).to(torch::kInt32);
-  torch::Tensor vector_Y = torch::zeros({A_rows}).to(torch::kInt32);
+  torch::Tensor C = torch::zeros({A_rows, B_cols}, torch::dtype(torch::kInt32));
+  torch::Tensor vector_Y = torch::zeros({A_rows}, torch::dtype(torch::kInt32));
 
   T alpha = T(1);
   T beta  = T(0);
