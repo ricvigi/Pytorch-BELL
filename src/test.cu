@@ -449,6 +449,7 @@ __host__ int run_int<int8_t>(int argc, char **argv)
 template __host__ int run<float>(int argc, char **argv);
 template __host__ int run<double>(int argc, char **argv);
 
+template __host__ int run_int<int8_t>(int argc, char **argv);
 template __host__ int run_int<int>(int argc, char **argv);
 
 
