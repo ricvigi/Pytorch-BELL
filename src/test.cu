@@ -156,11 +156,11 @@ __host__ int run_int<int>(int argc, char **argv)
   unsigned int A_cols = atoi(argv[2]);
   unsigned int threshold = atoi(argv[3]);
   int PRINT_DEBUG = atoi(argv[4]);
-  printf("1\n");
+  std::cout << "1" << std::endl;
 
   torch::ScalarType dtype = torch::CppTypeToScalarType<T>::value;
   constexpr cudaDataType_t cuda_type = cuda_dtype<T>::val;
-  printf("2\n");
+  std::cout << "2" << std::endl;
 
   unsigned int B_rows = A_cols;
   unsigned int B_cols = A_cols;
@@ -168,48 +168,48 @@ __host__ int run_int<int>(int argc, char **argv)
   unsigned int C_cols = B_cols;
   unsigned int ldb = B_cols;
   unsigned int ldc = C_cols;
-  printf("3\n");
+  std::cout << "3" << std::endl;
 
   torch::Tensor A = torch::randint(-128, 127, {A_rows, A_cols}, torch::dtype(dtype));
-  printf("4\n");
+  std::cout << "4" << std::endl;
   torch::Tensor B = torch::randint(-128, 127, {B_rows, B_cols}, torch::dtype(dtype));
-  printf("5\n");
+  std::cout << "5" << std::endl;
   torch::Tensor vector_X = torch::randint(-128, 127, {A_cols}, torch::dtype(dtype));
-  printf("6\n");
+  std::cout << "6" << std::endl;
   A.masked_fill_(A < T(threshold), T(0));
-  printf("7\n");
+  std::cout << "7" << std::endl;
   torch::Tensor C = torch::zeros({A_rows, B_cols}, torch::dtype(dtype));
-  printf("8\n");
+  std::cout << "8" << std::endl;
   torch::Tensor vector_Y = torch::zeros({A_rows}, torch::dtype(dtype));
-  printf("9\n");
+  std::cout << "9" << std::endl;
 
   T alpha = T(1);
   T beta  = T(0);
-  printf("10\n");
+  std::cout << "10" << std::endl;
 
   T *hA = A.contiguous().data_ptr<T>();
-  printf("11\n");
+  std::cout << "11" << std::endl;
   T *hB = B.contiguous().data_ptr<T>();
-  printf("12\n");
+  std::cout << "12" << std::endl;
   T *hC = C.contiguous().data_ptr<T>();
-  printf("13\n");
+  std::cout << "13" << std::endl;
   T *h_vector_X = vector_X.contiguous().data_ptr<T>();
-  printf("14\n");
+  std::cout << "14" << std::endl;
   T *h_vector_Y = vector_Y.contiguous().data_ptr<T>();
-  printf("15\n");
+  std::cout << "15" << std::endl;
 
 
 
   // count how many non zero values A has
   unsigned int n_non_zeroes = 0;
   count_non_zeros<T>(hA, A_rows, A_cols, &n_non_zeroes);
-  printf("16\n");
+  std::cout << "16" << std::endl;
   printf("number of non zeroes in A: %d\n", n_non_zeroes);
 
   // put the non zero values of A into a contiguous array
   T *non_zero_values = (T*) malloc(n_non_zeroes*sizeof(T));
   extract_non_zeros<T>(hA, A_rows, A_cols, non_zero_values);
-  printf("17\n");
+  std::cout << "17" << std::endl;
   // Get the ellColInd array for matrix A
   int ellBlockSize, ellCols;
   int* ellColInd = nullptr;
@@ -241,7 +241,7 @@ __host__ int run_int<int>(int argc, char **argv)
   T *dA_dense = nullptr;
 
   convert_to_blockedell<T>(A, matA, matSpA, dA_columns, dA_values, dA_dense, &ellBlockSize, &ellCols, ellColInd, ellValue);
-  printf("18\n");
+  std::cout << "18" << std::endl;
   /* [END] Dense to sparse conversion */
 
 
@@ -259,9 +259,9 @@ __host__ int run_int<int>(int argc, char **argv)
   CHECK_CUSPARSE( cusparseCreateDnMat(&vecY, A_rows, 1, 1, d_vector_Y, cuda_type, CUSPARSE_ORDER_ROW) )
 
   execute_spmm<T>(matSpA, matB, matC, alpha, beta);
-  printf("19\n");
+  std::cout << "19" << std::endl;
   execute_spmv<T>(matSpA, vecX, vecY, alpha, beta);
-  printf("20\n");
+  std::cout << "20" << std::endl;
 
   /* [END] Execute sparse-dense matrix multiplication */
 
