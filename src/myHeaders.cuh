@@ -154,7 +154,7 @@ __host__ int execute_spmv(cusparseSpMatDescr_t spA,
 
 /* Returns the number of non-zero values of matrix float *mat. rows and cols are the dimensions of *mat, and n_non_zeroes is the return value (should be initialized to 0 before calling this function). */
 template <typename T>
-__host__ inline void count_non_zeroes(T *mat, unsigned int rows, unsigned int cols, unsigned int *n_non_zeroes)
+__host__ inline void count_non_zeros(T *mat, unsigned int rows, unsigned int cols, unsigned int *n_non_zeros)
 {
   const T eps = T(1e-9);
   // number of non zero values in *mat
@@ -167,7 +167,29 @@ __host__ inline void count_non_zeroes(T *mat, unsigned int rows, unsigned int co
       t += mat[i * cols + j];
       if (T(fabs(t)) > eps)
       {
-        *n_non_zeroes += 1;
+        *n_non_zeros += 1;
+      } else
+      {
+        continue;
+      }
+    }
+  }
+}
+
+template <>
+__host__ inline void count_non_zeros<int>(int *mat, unsigned int rows, unsigned int cols, unsigned int *n_non_zeros)
+{
+  const int eps = 0;
+
+  for (unsigned int i = 0; i < rows; ++i)
+  {
+    for (unsigned int j = 0; j < cols; ++j)
+    {
+      int t = 0;
+      t += mat[i * cols + j]
+      if (abs(t) > eps)
+      {
+        *n_non_zeros += 1;
       } else
       {
         continue;
@@ -190,6 +212,27 @@ __host__ inline void extract_non_zeros(T *mat, unsigned int rows, unsigned int c
       T t = T(0);
       t += mat[i * cols + j];
       if (T(fabs(t)) > eps)
+      {
+        non_zero_values[idx] = t;
+        idx += 1;
+      }
+    }
+  }
+}
+
+template <>
+__host__ inline void extract_non_zeros<int>(int *mat, unsigned int rows, unsigned int cols, int *non_zero_values)
+{
+  const int eps = 0;
+  unsigned int idx = 0;
+
+  for (unsigned int i = 0; i < rows; ++i)
+  {
+    for (unsigned int j = 0; j < cols; ++j)
+    {
+      int t = 0;
+      t += mat[i * cols + j];
+      if (abs(t) > 0)
       {
         non_zero_values[idx] = t;
         idx += 1;

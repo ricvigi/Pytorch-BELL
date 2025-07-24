@@ -38,7 +38,7 @@ __host__ int run(int argc, char **argv)
 
   // count how many non zero values A has
   unsigned int n_non_zeroes = 0;
-  count_non_zeroes<T>(hA, A_rows, A_cols, &n_non_zeroes);
+  count_non_zeros<T>(hA, A_rows, A_cols, &n_non_zeroes);
   printf("number of non zeroes in A: %d\n", n_non_zeroes);
 
   // put the non zero values of A into a contiguous array
@@ -187,7 +187,7 @@ __host__ int run_int(int argc, char **argv)
 
   // count how many non zero values A has
   unsigned int n_non_zeroes = 0;
-  count_non_zeroes<T>(hA, A_rows, A_cols, &n_non_zeroes);
+  count_non_zeros<T>(hA, A_rows, A_cols, &n_non_zeroes);
   printf("number of non zeroes in A: %d\n", n_non_zeroes);
 
   // put the non zero values of A into a contiguous array
@@ -340,7 +340,7 @@ __host__ int run_int<int8_t>(int argc, char **argv)
 
   // count how many non zero values A has
   // unsigned int n_non_zeroes = 0;
-  // count_non_zeroes<T>(hA, A_rows, A_cols, &n_non_zeroes);
+  // count_non_zeros<T>(hA, A_rows, A_cols, &n_non_zeroes);
   // printf("number of non zeroes in A: %d\n", n_non_zeroes);
 
   // put the non zero values of A into a contiguous array

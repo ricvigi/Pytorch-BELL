@@ -264,7 +264,7 @@ __host__ void getEllValues (torch::Tensor& A, T *ellValue, int *ellColInd, int r
  * @return int EXIT_SUCCESS or int EXIT_FAILURE
  */
 template <typename T>
-__host__ int getBellParams (torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCols, int*& ellColInd, T*& ellValue)
+__host__ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCols, int*& ellColInd, T*& ellValue)
 {
   /* Variable declarations */
   int i;
