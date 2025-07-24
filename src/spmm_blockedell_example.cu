@@ -2,7 +2,7 @@
 
 
 int
-main(int argc, char** argv)
+main(int argc, char **argv)
 {
   std::string dtype = argv[5];
   std::cout << dtype << std::endl;
@@ -15,7 +15,7 @@ main(int argc, char** argv)
   } else if (dtype == "int")
   {
     std::cout << "running run_int<int>" << std::endl;
-    return run_int(argc, argv);
+    return run_int<int>(argc, argv);
   } else
   {
     std::cerr << "Unsupported dtype: " << dtype << std::endl;
