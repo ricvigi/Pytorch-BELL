@@ -61,7 +61,7 @@ struct cuda_dtype<double>
     static constexpr cudaDataType_t val = CUDA_R_64F;
 };
 
-template<> // TODO: Find a way to have half precision tensors
+template<>
 struct cuda_dtype<int8_t>
 {
     static constexpr cudaDataType_t val = CUDA_R_8I;

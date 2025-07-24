@@ -450,7 +450,7 @@ __host__ int convert_to_blockedell(torch::Tensor &A            /* in */,
 {
   unsigned int A_rows = A.size(0);
   unsigned int A_cols = A.size(1);
-  printf("%d %d\n", A_rows, A_cols);
+  std::cout << A_rows << " " << A_cols << std::endl;
   unsigned int lda = A_cols;
 
   constexpr cudaDataType_t cuda_type = cuda_dtype<T>::val;
@@ -460,11 +460,12 @@ __host__ int convert_to_blockedell(torch::Tensor &A            /* in */,
   // Get the ellColInd array for matrix A
   int err;
 
-
+  std::cout << "1.1" << std::endl;
   err = getBellParams<T>(A, A_rows, A_cols, *ellBlockSize, *ellCols, ellColInd, ellValue);
+  std::cout << "1.2" << std::endl;
   if (err != 0)
   {
-    printf("Error code %d, exiting!\n", err);
+    std::cout << "Error code " << err << " , exiting!" << std::endl;
     fflush(stdout);
     return err;
   }
