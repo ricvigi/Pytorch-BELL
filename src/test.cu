@@ -146,10 +146,10 @@ __host__ int run(int argc, char **argv)
   return EXIT_SUCCESS;
 }
 
-
-__host__ int run_int(int argc, char **argv)
+template <>
+__host__ int run_int<int>(int argc, char **argv)
 {
-  printf("Entered\n");
+  std::cout<< "Entered" << std::endl
   using T = int;
  // Host problem definition
   unsigned int A_rows = atoi(argv[1]);
@@ -471,6 +471,6 @@ template __host__ int run<float>(int argc, char **argv);
 template __host__ int run<double>(int argc, char **argv);
 
 // template __host__ int run_int<int8_t>(int argc, char **argv);
-// template __host__ int run_int<int>(int argc, char **argv);
+template __host__ int run_int<int>(int argc, char **argv);
 
 

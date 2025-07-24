@@ -120,7 +120,7 @@ template <typename T> __host__ int getBellParams (torch::Tensor& A, int x, int y
 
 /* [BEGIN] Test functions */
 template <typename T> __host__ int run(int argc, char **argv);
-__host__ int run_int(int argc, char **argv);
+template <typename T> __host__ int run_int(int argc, char **argv);
 /* [END] Test functions */
 
 template <typename T>
