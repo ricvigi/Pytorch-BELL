@@ -444,7 +444,7 @@ __host__ int run_int<int8_t>(int argc, char **argv)
   CHECK_CUSPARSE(cusparseDestroySpMat(matSpA))
   CHECK_CUSPARSE(cusparseDestroyDnMat(matB))
   CHECK_CUSPARSE(cusparseDestroyDnMat(matC))
-  free(non_zero_values);
+  // free(non_zero_values);
   free(ellColInd);
   free(ellValue);
   return EXIT_SUCCESS;
