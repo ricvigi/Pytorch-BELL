@@ -149,6 +149,7 @@ __host__ int run(int argc, char **argv)
 
 __host__ int run_int(int argc, char **argv)
 {
+  using T = int;
  // Host problem definition
   unsigned int A_rows = atoi(argv[1]);
   unsigned int A_cols = atoi(argv[2]);
@@ -248,11 +249,11 @@ __host__ int run_int(int argc, char **argv)
   cusparseDnMatDescr_t matB, matC;
   cusparseDnMatDescr_t vecX, vecY; // NOTE: Not actually vectors, but matrices with one dimension equal to 1. cusparse does not support spmv with blockedell.
   CHECK_CUSPARSE( cusparseCreateDnMat(&matB, B_rows, B_cols, ldb, dB,
-                                      cuda_type, CUSPARSE_ORDER_ROW) )
+                                      CUDA_R_8I, CUSPARSE_ORDER_ROW) )
   CHECK_CUSPARSE( cusparseCreateDnMat(&matC, C_rows, C_cols, ldc, dC,
                                       cuda_type, CUSPARSE_ORDER_ROW) )
   // Create dense vector X
-  CHECK_CUSPARSE( cusparseCreateDnMat(&vecX, A_cols, 1, 1, d_vector_X, cuda_type, CUSPARSE_ORDER_ROW) )
+  CHECK_CUSPARSE( cusparseCreateDnMat(&vecX, A_cols, 1, 1, d_vector_X, CUDA_R_8I, CUSPARSE_ORDER_ROW) )
   // Create dense vector y
   CHECK_CUSPARSE( cusparseCreateDnMat(&vecY, A_rows, 1, 1, d_vector_Y, cuda_type, CUSPARSE_ORDER_ROW) )
 
