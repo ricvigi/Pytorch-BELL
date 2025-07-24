@@ -156,7 +156,7 @@ __host__ int execute_spmv(cusparseSpMatDescr_t spA,
 template <typename T>
 __host__ inline void count_non_zeroes(T *mat, unsigned int rows, unsigned int cols, unsigned int *n_non_zeroes)
 {
-  const T eps = 1e-9;
+  const T eps = T(1e-9);
   // number of non zero values in *mat
 
   for (unsigned int i = 0; i < rows; ++i)
@@ -165,7 +165,7 @@ __host__ inline void count_non_zeroes(T *mat, unsigned int rows, unsigned int co
     {
       T t = T(0);
       t += mat[i * cols + j];
-      if (fabs(t) > eps)
+      if (T(fabs(t)) > eps)
       {
         *n_non_zeroes += 1;
       } else
@@ -180,7 +180,7 @@ __host__ inline void count_non_zeroes(T *mat, unsigned int rows, unsigned int co
 template <typename T>
 __host__ inline void extract_non_zeros(T *mat, unsigned int rows, unsigned int cols, T *non_zero_values)
 {
-  const T eps = 1e-9;
+  const T eps = T(1e-9);
   unsigned int idx = 0;
 
   for (unsigned int i = 0; i < rows; ++i)
@@ -189,7 +189,7 @@ __host__ inline void extract_non_zeros(T *mat, unsigned int rows, unsigned int c
     {
       T t = T(0);
       t += mat[i * cols + j];
-      if (fabs(t) > eps)
+      if (T(fabs(t)) > eps)
       {
         non_zero_values[idx] = t;
         idx += 1;
