@@ -318,9 +318,9 @@ __host__ int run_int<int8_t>(int argc, char **argv)
   int8_t ldb = B_cols;
   int8_t ldc = C_cols;
 
-  torch::Tensor A = torch::randint(-128, 127, {A_rows, A_cols}, torch::dtype(dtype));
-  torch::Tensor B = torch::randint(-128, 127, {B_rows, B_cols}, torch::dtype(dtype));
-  torch::Tensor vector_X = torch::randint(-128, 127, {A_cols}, torch::dtype(dtype));
+  torch::Tensor A = torch::randint(-128, 127, {A_rows, A_cols}, torch::dtype(torch::kInt32)).to(torch::dtype(dtype));
+  torch::Tensor B = torch::randint(-128, 127, {B_rows, B_cols}, torch::dtype(torch::kInt32)).to(torch::dtype(dtype));
+  torch::Tensor vector_X = torch::randint(-128, 127, {A_cols}, torch::dtype(torch::kInt32)).to(torch::dtype(dtype));
   A.masked_fill_(A < T(threshold), T(0));
   std::cout << A << std::endl;
   torch::Tensor C = torch::zeros({A_rows, B_cols}, torch::dtype(torch::kInt32));
@@ -354,7 +354,6 @@ __host__ int run_int<int8_t>(int argc, char **argv)
 
   cudaStream_t stream;
   CHECK_CUDA(cudaStreamCreate(&stream))
-
   T *dB;
   int *dC;
   T *d_vector_X;
