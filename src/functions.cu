@@ -390,6 +390,7 @@ __host__ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, in
   /* Now get ellCols, the actual number of columns in the BELL format */
   std::cout << "1.1.3" << std::endl;
   bSums = computeEllCols(A, x, y, ellBlockSize);
+  std::cout << "1.1.35" << std::endl;
   // bSums = iterativeComputeEllCols<T>(A, x, y, ellBlockSize);
   ellCols = (bSums != 0).sum(1).max().item<int>();
   tEnd = omp_get_wtime();
