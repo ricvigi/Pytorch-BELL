@@ -183,6 +183,8 @@ __host__ int run_int(int argc, char **argv)
   T *h_vector_X = vector_X.contiguous().data_ptr<T>();
   T *h_vector_Y = vector_Y.contiguous().data_ptr<T>();
 
+  std::cout << A << std::endl;
+
   // count how many non zero values A has
   unsigned int n_non_zeroes = 0;
   count_non_zeroes<T>(hA, A_rows, A_cols, &n_non_zeroes);
