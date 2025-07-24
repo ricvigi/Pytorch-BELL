@@ -82,8 +82,7 @@ __host__ torch::Tensor computeEllCols (torch::Tensor& A, int rows, int cols, int
   nBlocksH = rows / kernelSize;
   nBlocksW = cols / kernelSize;
   B = A.view({nBlocksH, kernelSize, nBlocksW, kernelSize});
-  B = B.permute({0, 2, 1, 3});
-  bSums = B.sum({2,3});
+  B = B.permute({0, 2, 1, 3});, torch::dtype(torch::kFloat64));
   return bSums;
 }
 
@@ -151,19 +150,19 @@ __host__ torch::Tensor iterativeComputeEllCols (torch::Tensor& A, int rows, int 
  *
  * @return void. The return value of this function is ellColInd
  */
-template <typename T>
+// template <typename T>
 __host__ void getEllColInd (torch::Tensor &bSums, int *ellColInd, int rows, int cols)
 {
   int idx, rowSize;
   T val;
 
-  std::vector<T*> rowPointers(rows);
+  std::vector<double*> rowPointers(rows);
   # pragma omp parallel shared(ellColInd) private(idx, rowSize, val)
   {
     #   pragma omp for
     for (int i = 0; i < rows; ++i)
     {
-      rowPointers[i] = bSums[i].contiguous().data_ptr<T>();
+      rowPointers[i] = bSums[i].contiguous().data_ptr<double>();
     }
 
     #   pragma omp for
@@ -171,7 +170,7 @@ __host__ void getEllColInd (torch::Tensor &bSums, int *ellColInd, int rows, int 
     {
       idx = 0;
       rowSize = 0;
-      T* row = (T*) malloc(cols*sizeof(T));
+      T* row = (double*) malloc(cols*sizeof(double));
       T* bSumsRow = rowPointers[i];
       for (int j = 0; j < bSums.size(1); ++j)
       {
@@ -405,7 +404,7 @@ __host__ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, in
   tStart = omp_get_wtime();
   /* Create the ellColInd array */
   std::cout << "1.1.4" << std::endl;
-  getEllColInd<T>(bSums, ellColInd, rows, cols);
+  getEllColInd(bSums, ellColInd, rows, cols);
   std::cout << "1.1.45" << std::endl;
   tEnd = omp_get_wtime();
   printf("getEllColInd time: %f\n", tEnd - tStart);
@@ -707,10 +706,10 @@ template __host__ torch::Tensor iterativeComputeEllCols<double>(torch::Tensor&, 
 template __host__ torch::Tensor iterativeComputeEllCols<int8_t>(torch::Tensor&, int, int, int);
 template __host__ torch::Tensor iterativeComputeEllCols<int>(torch::Tensor&, int, int, int);
 
-template __host__ void getEllColInd<float>(torch::Tensor&, int*, int, int);
-template __host__ void getEllColInd<double>(torch::Tensor&, int*, int, int);
-template __host__ void getEllColInd<int8_t>(torch::Tensor&, int*, int, int);
-template __host__ void getEllColInd<int>(torch::Tensor&, int*, int, int);
+// template __host__ void getEllColInd<float>(torch::Tensor&, int*, int, int);
+// template __host__ void getEllColInd<double>(torch::Tensor&, int*, int, int);
+// template __host__ void getEllColInd<int8_t>(torch::Tensor&, int*, int, int);
+// template __host__ void getEllColInd<int>(torch::Tensor&, int*, int, int);
 
 template __host__ void getEllValues<float>(torch::Tensor&, float*, int*, int, int, int);
 template __host__ void getEllValues<double>(torch::Tensor&, double*, int*, int, int, int);
