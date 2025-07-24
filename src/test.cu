@@ -149,7 +149,7 @@ __host__ int run(int argc, char **argv)
 template <>
 __host__ int run_int<int>(int argc, char **argv)
 {
-  std::cout<< "Entered" << std::endl
+  std::cout<< "Entered" << std::endl;
   using T = int;
  // Host problem definition
   unsigned int A_rows = atoi(argv[1]);
