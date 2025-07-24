@@ -167,11 +167,9 @@ __host__ int run_int(int argc, char **argv)
   unsigned int ldc = C_cols;
 
   torch::Tensor A = torch::randint(-128, 127, {A_rows, A_cols}, torch::dtype(dtype));
-  std::cout << A << std::endl;
   torch::Tensor B = torch::randint(-128, 127, {B_rows, B_cols}, torch::dtype(dtype));
   torch::Tensor vector_X = torch::randint(-128, 127, {A_cols}, torch::dtype(dtype));
   A.masked_fill_(A < T(threshold), T(0));
-  std::cout << A << std::endl;
   torch::Tensor C = torch::zeros({A_rows, B_cols}, torch::dtype(dtype));
   torch::Tensor vector_Y = torch::zeros({A_rows}, torch::dtype(dtype));
 
@@ -324,6 +322,7 @@ __host__ int run_int<int8_t>(int argc, char **argv)
   torch::Tensor B = torch::randint(-128, 127, {B_rows, B_cols}, torch::dtype(dtype));
   torch::Tensor vector_X = torch::randint(-128, 127, {A_cols}, torch::dtype(dtype));
   A.masked_fill_(A < T(threshold), T(0));
+  std::cout << A << std::endl;
   torch::Tensor C = torch::zeros({A_rows, B_cols}, torch::dtype(torch::kInt32));
   torch::Tensor vector_Y = torch::zeros({A_rows}, torch::dtype(torch::kInt32));
 
