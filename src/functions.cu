@@ -153,16 +153,17 @@ __host__ torch::Tensor iterativeComputeEllCols (torch::Tensor& A, int rows, int 
 // template <typename T>
 __host__ void getEllColInd (torch::Tensor &bSums, int *ellColInd, int rows, int cols)
 {
+  using T = double;
   int idx, rowSize;
   T val;
 
-  std::vector<double*> rowPointers(rows);
+  std::vector<T*> rowPointers(rows);
   # pragma omp parallel shared(ellColInd) private(idx, rowSize, val)
   {
     #   pragma omp for
     for (int i = 0; i < rows; ++i)
     {
-      rowPointers[i] = bSums[i].contiguous().data_ptr<double>();
+      rowPointers[i] = bSums[i].contiguous().data_ptr<T>();
     }
 
     #   pragma omp for
@@ -170,7 +171,7 @@ __host__ void getEllColInd (torch::Tensor &bSums, int *ellColInd, int rows, int 
     {
       idx = 0;
       rowSize = 0;
-      T* row = (double*) malloc(cols*sizeof(double));
+      T* row = (T*) malloc(cols*sizeof(T));
       T* bSumsRow = rowPointers[i];
       for (int j = 0; j < bSums.size(1); ++j)
       {
