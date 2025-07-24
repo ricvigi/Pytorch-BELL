@@ -299,7 +299,7 @@ __host__ int run_int<int>(int argc, char **argv)
   // ----------------------------- ATTENTION -----------------------------
   // if A and B are int8_t, to use spmm C must be of type CUDA_R_32I, i.e. int
 
-  using T = int8_t;
+  using T = int;
   // Host problem definition
   unsigned int A_rows = atoi(argv[1]);
   unsigned int A_cols = atoi(argv[2]);
