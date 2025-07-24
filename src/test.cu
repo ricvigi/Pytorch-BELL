@@ -167,9 +167,11 @@ __host__ int run_int(int argc, char **argv)
   unsigned int ldc = C_cols;
 
   torch::Tensor A = torch::randint(-128, 127, {A_rows, A_cols}, torch::dtype(dtype));
+  std::cout << A << std::endl;
   torch::Tensor B = torch::randint(-128, 127, {B_rows, B_cols}, torch::dtype(dtype));
   torch::Tensor vector_X = torch::randint(-128, 127, {A_cols}, torch::dtype(dtype));
   A.masked_fill_(A < T(threshold), T(0));
+  std::cout << A << std::endl;
   torch::Tensor C = torch::zeros({A_rows, B_cols}, torch::dtype(dtype));
   torch::Tensor vector_Y = torch::zeros({A_rows}, torch::dtype(dtype));
 
@@ -183,7 +185,7 @@ __host__ int run_int(int argc, char **argv)
   T *h_vector_X = vector_X.contiguous().data_ptr<T>();
   T *h_vector_Y = vector_Y.contiguous().data_ptr<T>();
 
-  std::cout << A << std::endl;
+
 
   // count how many non zero values A has
   unsigned int n_non_zeroes = 0;
