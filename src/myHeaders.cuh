@@ -232,7 +232,7 @@ __host__ inline void extract_non_zeros<int>(int *mat, unsigned int rows, unsigne
     {
       int t = 0;
       t += mat[i * cols + j];
-      if (abs(t) > 0)
+      if (abs(t) > eps)
       {
         non_zero_values[idx] = t;
         idx += 1;
