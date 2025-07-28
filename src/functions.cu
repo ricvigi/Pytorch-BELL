@@ -339,10 +339,6 @@ __host__ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, in
     /* NOTE: Should we use a guided schedule for this loop parallelism?
      *    /* ATTENTION: This routine might be a waste of time... remember that if blocksize 2*n has < zeroes than blocksize
      *    /* n, it might be pointless to continue... */
-     #pragma omp single
-     {
-       std::cout << "1.1.1" << std::endl;
-     }
      #   pragma omp for
      for (i = 0; i < divisorsSize; ++i)
      {
@@ -365,10 +361,6 @@ __host__ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, in
      localZeroCount[id] = localBestZeroes;
      localKernels[id] = localBestKernel;
   }
-#pragma omp single
-{
-  std::cout << "1.1.2" << std::endl;
-}
   /* Get the best block size value */
   int z, k;
   for (int i = 0; i < nThreads; ++i)
@@ -392,13 +384,10 @@ __host__ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, in
 
   tStart = omp_get_wtime();
   /* Now get ellCols, the actual number of columns in the BELL format */
-  std::cout << "1.1.3" << std::endl;
   bSums = computeEllCols(A, x, y, ellBlockSize);
-  std::cout << "1.1.35" << std::endl;
   // bSums = iterativeComputeEllCols<T>(A, x, y, ellBlockSize);
 
   ellCols = (bSums != 0.0f).sum(1).max().item<int>();
-  std::cout << "1.1.36" << std::endl;
   tEnd = omp_get_wtime();
   printf("computeEllCols time: %f\n", tEnd - tStart);
 
@@ -410,9 +399,7 @@ __host__ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, in
 
   tStart = omp_get_wtime();
   /* Create the ellColInd array */
-  std::cout << "1.1.4" << std::endl;
   getEllColInd(bSums, ellColInd, rows, cols);
-  std::cout << "1.1.45" << std::endl;
   tEnd = omp_get_wtime();
   printf("getEllColInd time: %f\n", tEnd - tStart);
 
@@ -423,9 +410,7 @@ __host__ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, in
   // ellValue = (float*) malloc((rows*cols*ellBlockSize*ellBlockSize)*sizeof(float));
   /* NEW FORMULA */
   ellValue = (T*) malloc((x*ellCols*ellBlockSize)*sizeof(T));
-  std::cout << "1.1.5" << std::endl;
   getEllValues<T>(A, ellValue, ellColInd, rows, cols, ellBlockSize);
-  std::cout << "1.1.55" << std::endl;
   // getEllValues(A, ellValue, ellColInd);
   tEnd = omp_get_wtime();
   printf("getEllValues time: %f\n", tEnd - tStart);

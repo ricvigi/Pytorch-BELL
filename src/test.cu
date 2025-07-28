@@ -3,7 +3,9 @@
 template <typename T>
 __host__ int run(int argc, char **argv)
 {
-  // Host problem definition
+
+  /* [BEGIN] Matrix generation */
+
   unsigned int A_rows = atoi(argv[1]);
   unsigned int A_cols = atoi(argv[2]);
   float threshold = atof(argv[3]);
@@ -29,6 +31,9 @@ __host__ int run(int argc, char **argv)
   T alpha = T(1);
   T beta  = T(0);
 
+  /* [END] Matrix generation */
+
+  /* [BEGIN] Host pointers */
 
   T *hA = A.contiguous().data_ptr<T>();
   T *hB = B.contiguous().data_ptr<T>();
@@ -36,19 +41,15 @@ __host__ int run(int argc, char **argv)
   T *h_vector_X = vector_X.contiguous().data_ptr<T>();
   T *h_vector_Y = vector_Y.contiguous().data_ptr<T>();
 
-  // count how many non zero values A has
-  unsigned int n_non_zeroes = 0;
-  count_non_zeros<T>(hA, A_rows, A_cols, &n_non_zeroes);
-  printf("number of non zeroes in A: %d\n", n_non_zeroes);
-
-  // put the non zero values of A into a contiguous array
-  T *non_zero_values = (T*) malloc(n_non_zeroes*sizeof(T));
-  extract_non_zeros<T>(hA, A_rows, A_cols, non_zero_values);
-
   // Get the ellColInd array for matrix A
   int ellBlockSize, ellCols;
   int* ellColInd = nullptr;
   T* ellValue = nullptr;
+
+  /* [END] Host pointers */
+
+
+  /* [BEGIN] Device memory allocation and stream */
 
   cudaStream_t stream;
   CHECK_CUDA(cudaStreamCreate(&stream))
@@ -64,6 +65,8 @@ __host__ int run(int argc, char **argv)
   CHECK_CUDA(cudaMemcpyAsync(d_vector_X, h_vector_X, A_cols * sizeof(T), cudaMemcpyHostToDevice, stream))
   CHECK_CUDA(cudaMemcpyAsync(d_vector_Y, h_vector_Y, A_rows * sizeof(T), cudaMemcpyHostToDevice, stream))
   CHECK_CUDA(cudaStreamSynchronize(stream))
+
+  /* [END] Device memory allocation and stream */
 
   /* [BEGIN] Dense to sparse conversion */
 
@@ -99,6 +102,8 @@ __host__ int run(int argc, char **argv)
 
   /* [END] Execute sparse-dense matrix multiplication */
 
+  /* [BEGIN] Debug info */
+
   if (PRINT_DEBUG > 0)
   {
     CHECK_CUDA(cudaMemcpy(hC, dC, C_rows * C_cols * sizeof(T), cudaMemcpyDeviceToHost))
@@ -128,6 +133,10 @@ __host__ int run(int argc, char **argv)
     std::cout << spmv_res << std::endl;
   }
 
+  /* [END] Debug info */
+
+
+  /* [BEGIN] Memory de-allocation */
 
   CHECK_CUDA(cudaFree(dA_columns))
   CHECK_CUDA(cudaFree(dA_values))
@@ -143,24 +152,27 @@ __host__ int run(int argc, char **argv)
   free(non_zero_values);
   free(ellColInd);
   free(ellValue);
+
+  /* [END] Memory de-allocation */
+
   return EXIT_SUCCESS;
 }
 
 template <>
 __host__ int run_int<int>(int argc, char **argv)
 {
-  // std::cout<< "Entered" << std::endl;
   using T = int;
- // Host problem definition
+
+  /* [BEGIN] Matrix generation */
+
+  // Host problem definition
   unsigned int A_rows = atoi(argv[1]);
   unsigned int A_cols = atoi(argv[2]);
   unsigned int threshold = atoi(argv[3]);
   int PRINT_DEBUG = atoi(argv[4]);
-  // std::cout << "1" << std::endl;
 
   torch::ScalarType dtype = torch::CppTypeToScalarType<T>::value;
   constexpr cudaDataType_t cuda_type = cuda_dtype<T>::val;
-  // std::cout << "2" << std::endl;
 
   unsigned int B_rows = A_cols;
   unsigned int B_cols = A_cols;
@@ -168,52 +180,36 @@ __host__ int run_int<int>(int argc, char **argv)
   unsigned int C_cols = B_cols;
   unsigned int ldb = B_cols;
   unsigned int ldc = C_cols;
-  // std::cout << "3" << std::endl;
 
   torch::Tensor A = torch::randint(-128, 127, {A_rows, A_cols}, torch::dtype(dtype));
-  // std::cout << "4" << std::endl;
   torch::Tensor B = torch::randint(-128, 127, {B_rows, B_cols}, torch::dtype(dtype));
-  // std::cout << "5" << std::endl;
   torch::Tensor vector_X = torch::randint(-128, 127, {A_cols}, torch::dtype(dtype));
-  // std::cout << "6" << std::endl;
   A.masked_fill_(A < T(threshold), T(0));
-  // std::cout << "7" << std::endl;
   torch::Tensor C = torch::zeros({A_rows, B_cols}, torch::dtype(dtype));
-  // std::cout << "8" << std::endl;
   torch::Tensor vector_Y = torch::zeros({A_rows}, torch::dtype(dtype));
-  // std::cout << "9" << std::endl;
 
   T alpha = T(1);
   T beta  = T(0);
-  // std::cout << "10" << std::endl;
+
+  /* [END] Matrix generation */
+
+  /* [BEGIN] Host pointers */
 
   T *hA = A.contiguous().data_ptr<T>();
-  // std::cout << "11" << std::endl;
   T *hB = B.contiguous().data_ptr<T>();
-  // std::cout << "12" << std::endl;
   T *hC = C.contiguous().data_ptr<T>();
-  // std::cout << "13" << std::endl;
   T *h_vector_X = vector_X.contiguous().data_ptr<T>();
-  // std::cout << "14" << std::endl;
   T *h_vector_Y = vector_Y.contiguous().data_ptr<T>();
-  // std::cout << "15" << std::endl;
 
-
-
-  // count how many non zero values A has
-  unsigned int n_non_zeroes = 0;
-  count_non_zeros<T>(hA, A_rows, A_cols, &n_non_zeroes);
-  // std::cout << "16" << std::endl;
-  printf("number of non zeroes in A: %d\n", n_non_zeroes);
-
-  // put the non zero values of A into a contiguous array
-  T *non_zero_values = (T*) malloc(n_non_zeroes*sizeof(T));
-  extract_non_zeros<T>(hA, A_rows, A_cols, non_zero_values);
-  // std::cout << "17" << std::endl;
   // Get the ellColInd array for matrix A
   int ellBlockSize, ellCols;
   int* ellColInd = nullptr;
   T* ellValue = nullptr;
+
+  /* [END] Host pointers */
+
+
+  /* [BEGIN] Device memory allocation and stream */
 
   cudaStream_t stream;
   CHECK_CUDA(cudaStreamCreate(&stream))
@@ -230,6 +226,9 @@ __host__ int run_int<int>(int argc, char **argv)
   CHECK_CUDA(cudaMemcpyAsync(d_vector_Y, h_vector_Y, A_rows * sizeof(T), cudaMemcpyHostToDevice, stream))
   CHECK_CUDA(cudaStreamSynchronize(stream))
 
+  /* [END] Device memory allocation and stream */
+
+
   /* [BEGIN] Dense to sparse conversion */
 
   // To create a conversion you need a dense matrix to convert it into a sparse matrix. If you want to store matrix A
@@ -241,7 +240,7 @@ __host__ int run_int<int>(int argc, char **argv)
   T *dA_dense = nullptr;
 
   convert_to_blockedell<T>(A, matA, matSpA, dA_columns, dA_values, dA_dense, &ellBlockSize, &ellCols, ellColInd, ellValue);
-  // std::cout << "18" << std::endl;
+
   /* [END] Dense to sparse conversion */
 
 
@@ -259,11 +258,11 @@ __host__ int run_int<int>(int argc, char **argv)
   CHECK_CUSPARSE( cusparseCreateDnMat(&vecY, A_rows, 1, 1, d_vector_Y, cuda_type, CUSPARSE_ORDER_ROW) )
 
   execute_spmm<T>(matSpA, matB, matC, alpha, beta);
-  // std::cout << "19" << std::endl;
   execute_spmv<T>(matSpA, vecX, vecY, alpha, beta);
-  // std::cout << "20" << std::endl;
 
   /* [END] Execute sparse-dense matrix multiplication */
+
+  /* [BEGIN] Debug info */
 
   if (PRINT_DEBUG > 0)
   {
@@ -294,6 +293,9 @@ __host__ int run_int<int>(int argc, char **argv)
     std::cout << spmv_res << std::endl;
   }
 
+  /* [END] Debug info */
+
+  /* [BEGIN] Memory de-allocation */
 
   CHECK_CUDA(cudaFree(dA_columns))
   CHECK_CUDA(cudaFree(dA_values))
@@ -309,6 +311,9 @@ __host__ int run_int<int>(int argc, char **argv)
   free(non_zero_values);
   free(ellColInd);
   free(ellValue);
+
+  /* [END] Memory de-allocation */
+
   return EXIT_SUCCESS;
 }
 
@@ -317,18 +322,17 @@ __host__ int run_int<int8_t>(int argc, char **argv)
 {
   // ----------------------------- ATTENTION -----------------------------
   // if A and B are int8_t, to use spmm C must be of type CUDA_R_32I, i.e. int
-  // std::cout<< "Entered" << std::endl;
   using T = int8_t;
-  // Host problem definition
+
+  /* [BEGIN] Matrix generation */
+
   int8_t A_rows = atoi(argv[1]);
   int8_t A_cols = atoi(argv[2]);
   int8_t threshold = atoi(argv[3]);
   int PRINT_DEBUG = atoi(argv[4]);
-  // std::cout << "1" << std::endl;
 
   torch::ScalarType dtype = torch::CppTypeToScalarType<T>::value;
   constexpr cudaDataType_t cuda_type = cuda_dtype<T>::val;
-  // std::cout << "2" << std::endl;
 
   int8_t B_rows = A_cols;
   int8_t B_cols = A_cols;
@@ -336,48 +340,37 @@ __host__ int run_int<int8_t>(int argc, char **argv)
   int8_t C_cols = B_cols;
   int8_t ldb = B_cols;
   int8_t ldc = C_cols;
-  // std::cout << "3" << std::endl;
 
   torch::Tensor A = torch::randint(-128, 127, {A_rows, A_cols}, torch::dtype(torch::kInt32)).to(torch::dtype(dtype));
-  // std::cout << "4" << std::endl;
   torch::Tensor B = torch::randint(-128, 127, {B_rows, B_cols}, torch::dtype(torch::kInt32)).to(torch::dtype(dtype));
-  // std::cout << "5" << std::endl;
   torch::Tensor vector_X = torch::randint(-128, 127, {A_cols}, torch::dtype(torch::kInt32)).to(torch::dtype(dtype));
-  // std::cout << "6" << std::endl;
   A.masked_fill_(A < T(threshold), T(0));
-  // std::cout << "7" << std::endl;
-  // std::cout << A << std::endl;
-  // std::cout << "8" << std::endl;
   torch::Tensor C = torch::zeros({A_rows, B_cols}, torch::dtype(torch::kInt32));
-  // std::cout << "9" << std::endl;
-  // std::cout << C << std::endl;
   torch::Tensor vector_Y = torch::zeros({A_rows}, torch::dtype(torch::kInt32));
-  // std::cout << vector_Y << std::endl;
-  // std::cout << "10" << std::endl;
 
   T alpha = T(1);
   T beta  = T(0);
 
+  /* [END] Matrix generation */
+
+  /* [BEGIN] Host pointers */
 
   T *hA = A.contiguous().data_ptr<T>();
   T *hB = B.contiguous().data_ptr<T>();
   int *hC = C.contiguous().data_ptr<int>();
   T *h_vector_X = vector_X.contiguous().data_ptr<T>();
   int *h_vector_Y = vector_Y.contiguous().data_ptr<int>();
-  // std::cout << "11" << std::endl;
-  // count how many non zero values A has
-  // unsigned int n_non_zeroes = 0;
-  // count_non_zeros<T>(hA, A_rows, A_cols, &n_non_zeroes);
-  // printf("number of non zeroes in A: %d\n", n_non_zeroes);
 
-  // put the non zero values of A into a contiguous array
-  // T *non_zero_values = (T*) malloc(n_non_zeroes*sizeof(T));
-  // extract_non_zeros<T>(hA, A_rows, A_cols, non_zero_values);
 
   // Get the ellColInd array for matrix A
   int ellBlockSize, ellCols;
   int* ellColInd = nullptr;
   T* ellValue = nullptr;
+
+  /* [END] Host pointers */
+
+
+  /* [BEGIN] Device memory allocation and stream */
 
   cudaStream_t stream;
   CHECK_CUDA(cudaStreamCreate(&stream))
@@ -395,6 +388,8 @@ __host__ int run_int<int8_t>(int argc, char **argv)
   CHECK_CUDA(cudaMemcpyAsync(d_vector_Y, h_vector_Y, A_rows * sizeof(int), cudaMemcpyHostToDevice, stream))
   CHECK_CUDA(cudaStreamSynchronize(stream))
 
+  /* [END] Device memory allocation and stream */
+
   /* [BEGIN] Dense to sparse conversion */
 
   // To create a conversion you need a dense matrix to convert it into a sparse matrix. If you want to store matrix A
@@ -404,9 +399,8 @@ __host__ int run_int<int8_t>(int argc, char **argv)
   int *dA_columns = nullptr;
   T *dA_values = nullptr;
   T *dA_dense = nullptr;
-  // std::cout << "11.5" << std::endl;
   convert_to_blockedell<T>(A, matA, matSpA, dA_columns, dA_values, dA_dense, &ellBlockSize, &ellCols, ellColInd, ellValue);
-  // std::cout << "12" << std::endl;
+
   /* [END] Dense to sparse conversion */
 
 
@@ -416,23 +410,19 @@ __host__ int run_int<int8_t>(int argc, char **argv)
   cusparseDnMatDescr_t vecX, vecY; // NOTE: Not actually vectors, but matrices with one dimension equal to 1. cusparse does not support spmv with blockedell.
   CHECK_CUSPARSE( cusparseCreateDnMat(&matB, B_rows, B_cols, ldb, dB,
                                       cuda_type, CUSPARSE_ORDER_ROW) )
-  // std::cout << "13" << std::endl;
   CHECK_CUSPARSE( cusparseCreateDnMat(&matC, C_rows, C_cols, ldc, dC,
                                       CUDA_R_32I, CUSPARSE_ORDER_ROW) )
-  // std::cout << "14" << std::endl;
   // Create dense vector X
   CHECK_CUSPARSE( cusparseCreateDnMat(&vecX, A_cols, 1, 1, d_vector_X, cuda_type, CUSPARSE_ORDER_ROW) )
-  // std::cout << "15" << std::endl;
   // Create dense vector y
   CHECK_CUSPARSE( cusparseCreateDnMat(&vecY, A_rows, 1, 1, d_vector_Y, CUDA_R_32I, CUSPARSE_ORDER_ROW) )
-  // std::cout << "16" << std::endl;
 
   execute_spmm<T>(matSpA, matB, matC, alpha, beta);
-  // std::cout << "17" << std::endl;
   execute_spmv<T>(matSpA, vecX, vecY, alpha, beta);
-  // std::cout << "18" << std::endl;
 
   /* [END] Execute sparse-dense matrix multiplication */
+
+  /* [BEGIN] Debug info */
 
   if (PRINT_DEBUG > 0)
   {
@@ -463,6 +453,9 @@ __host__ int run_int<int8_t>(int argc, char **argv)
     std::cout << spmv_res << std::endl;
   }
 
+  /* [END] Debug info */
+
+  /* [BEGIN] Memory de-allocation */
 
   CHECK_CUDA(cudaFree(dA_columns))
   CHECK_CUDA(cudaFree(dA_values))
@@ -478,6 +471,9 @@ __host__ int run_int<int8_t>(int argc, char **argv)
   // free(non_zero_values);
   free(ellColInd);
   free(ellValue);
+
+  /* [END] Memory de-allocation */
+
   return EXIT_SUCCESS;
 }
 
