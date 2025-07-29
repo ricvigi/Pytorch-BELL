@@ -464,9 +464,7 @@ __host__ int convert_to_blockedell(torch::Tensor &A            /* in */,
   // Get the ellColInd array for matrix A
   int err;
 
-  std::cout << "1.1" << std::endl;
   err = getBellParams<T>(A, A_rows, A_cols, *ellBlockSize, *ellCols, ellColInd, ellValue);
-  std::cout << "1.2" << std::endl;
   if (err != 0)
   {
     std::cout << "Error code " << err << ",exiting!" << std::endl;
@@ -805,7 +803,7 @@ template __host__ int convert_to_blockedell<double>(torch::Tensor &A , cusparseD
                                                     double *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, double *ellValue);
 template __host__ int convert_to_blockedell<float>(torch::Tensor &A , cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, int *dA_columns, float *dA_values,
                                                    float *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, float *ellValue);
-template __host__ int convert_to_blockedell<__half>(torch::Tensor &A , cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, int *dA_columns, __half *dA_values,
+template __host__ int convert_to_blockedell<__half>(torch::Tensor &A, cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, int *dA_columns, __half *dA_values,
                                                     __half *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, __half *ellValue);
 template __host__ int convert_to_blockedell<int>(torch::Tensor &A , cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, int *dA_columns, int *dA_values,
                                                  int *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, int *ellValue);
