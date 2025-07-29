@@ -26,7 +26,7 @@ __host__ int computeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernel
  * @return int, the number of zero blocks of size kernelSize x kernelSize in tensor A
  */
 template <typename T>
-__host__ int iterativeComputeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernelSize)
+__host__ int iterativeComputeZeroBlocks(torch::Tensor &A, int rows, int cols, int kernelSize)
 {
   int count = 0;
   int nBlocksH = rows / kernelSize;
@@ -51,7 +51,7 @@ __host__ int iterativeComputeZeroBlocks (torch::Tensor &A, int rows, int cols, i
           {
             int row = i * kernelSize + ii;
             int col = j * kernelSize + jj;
-            if (rowPointers[row][col] != T(0))
+            if (rowPointers[row][col].to<float>() != 0.0f) // This is needed to ensure compatibility of this template with different types. Cast whatever type you have to float and compare it to zero
             {
               isZeroBlock = false;
               break;
@@ -527,15 +527,15 @@ __host__ int convert_to_blockedell(torch::Tensor &A            /* in */,
 
 template <>
 __host__ int convert_to_blockedell<__half>(torch::Tensor &A            /* in */,
-                                        cusparseDnMatDescr_t &matA  /* in */,
-                                        cusparseSpMatDescr_t &spA   /* out */,
-                                        int *dA_columns             /* in */,
-                                        __half *dA_values                /* in */,
-                                        __half *dA_dense                 /* in */,
-                                        int *ellBlockSize           /* in */,
-                                        int *ellCols                /* in */,
-                                        int *ellColInd              /* in */,
-                                        __half *ellValue                 /* in */)
+                                           cusparseDnMatDescr_t &matA  /* in */,
+                                           cusparseSpMatDescr_t &spA   /* out */,
+                                           int *dA_columns             /* in */,
+                                           __half *dA_values           /* in */,
+                                           __half *dA_dense            /* in */,
+                                           int *ellBlockSize           /* in */,
+                                           int *ellCols                /* in */,
+                                           int *ellColInd              /* in */,
+                                           __half *ellValue            /* in */)
 {
   using T = __half;
   unsigned int A_rows = A.size(0);
@@ -545,7 +545,7 @@ __host__ int convert_to_blockedell<__half>(torch::Tensor &A            /* in */,
 
   constexpr cudaDataType_t cuda_type = CUDA_R_8I;
 
-  T *hA = reinterpret_cast<__half*>(A.contiguous().data_ptr<at::Half>());
+  T *hA = reinterpret_cast<T*>(A.contiguous().data_ptr<at::Half>());
 
   // Get the ellColInd array for matrix A
   int err;
@@ -617,15 +617,15 @@ __host__ int convert_to_blockedell<__half>(torch::Tensor &A            /* in */,
 /* ATTENTION: This is a specialization for INT type, which requires the sparse matrix to have an 8 bit integer */
 template <>
 __host__ int convert_to_blockedell<int8_t>(torch::Tensor &A            /* in */,
-                                        cusparseDnMatDescr_t &matA  /* in */,
-                                        cusparseSpMatDescr_t &spA   /* out */,
-                                        int *dA_columns             /* in */,
-                                        int8_t *dA_values                /* in */,
-                                        int8_t *dA_dense                 /* in */,
-                                        int *ellBlockSize           /* in */,
-                                        int *ellCols                /* in */,
-                                        int *ellColInd              /* in */,
-                                        int8_t *ellValue                 /* in */)
+                                           cusparseDnMatDescr_t &matA  /* in */,
+                                           cusparseSpMatDescr_t &spA   /* out */,
+                                           int *dA_columns             /* in */,
+                                           int8_t *dA_values           /* in */,
+                                           int8_t *dA_dense            /* in */,
+                                           int *ellBlockSize           /* in */,
+                                           int *ellCols                /* in */,
+                                           int *ellColInd              /* in */,
+                                           int8_t *ellValue            /* in */)
 {
   using T = int8_t;
   unsigned int A_rows = A.size(0);
@@ -709,7 +709,11 @@ __host__ int convert_to_blockedell<int8_t>(torch::Tensor &A            /* in */,
  * @note If you consider B as a m x 1 vector, it's also an implementation of sparse-vector multiplication
  */
 template <typename T>
-__host__ int execute_spmm(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t B, cusparseDnMatDescr_t C, T alpha, T beta)
+__host__ int execute_spmm(cusparseSpMatDescr_t spA    /* in */,
+                          cusparseDnMatDescr_t B      /* in */,
+                          cusparseDnMatDescr_t C      /* out */,
+                          T alpha                     /* in */,
+                          T beta                      /* in */)
 {
   cusparseHandle_t spmm_handle = NULL;
   void* d_spmm_handle_buffer = NULL;
@@ -743,7 +747,11 @@ __host__ int execute_spmm(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t B, cusp
  * @note Because cusparse does not support spmv for blockedell format, we have to trick the user and perform spmm instead of spmv, where the vector is a m x 1 matrix.
  */
 template <typename T>
-__host__ int execute_spmv(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t vecX, cusparseDnMatDescr_t vecY, T alpha, T beta)
+__host__ int execute_spmv(cusparseSpMatDescr_t spA    /* in */,
+                          cusparseDnMatDescr_t vecX   /* in */,
+                          cusparseDnMatDescr_t vecY   /* out */,
+                          T alpha                     /* in */,
+                          T beta                      /* in */)
 {
   cusparseHandle_t spmv_handle = NULL;
   void *d_spmv_buffer = NULL;
@@ -795,7 +803,8 @@ template __host__ void getEllValues<int>(torch::Tensor&, int*, int*, int, int, i
 
 template __host__ int getBellParams<float>(torch::Tensor&, int, int, int&, int&, int*&, float*&);
 template __host__ int getBellParams<double>(torch::Tensor&, int, int, int&, int&, int*&, double*&);
-template __host__ int getBellParams<at::Half>(torch::Tensor&, int, int, int&, int&, int*&, __half*&);
+template __host__ int getBellParams<at::Half>(torch::Tensor&, int, int, int&, int&, int*&, at::Half*&);
+
 template __host__ int getBellParams<int8_t>(torch::Tensor&, int, int, int&, int&, int*&, int8_t*&);
 template __host__ int getBellParams<int>(torch::Tensor&, int, int, int&, int&, int*&, int*&);
 

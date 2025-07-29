@@ -56,6 +56,12 @@ struct cuda_dtype<at::Half>
   static constexpr cudaDataType_t val = CUDA_R_16F;
 };
 
+template <>
+struct cuda_dtype<__float>
+{
+  static constexpr cudaDataType_t val = CUDA_R_16F;
+}
+
 template<>
 struct cuda_dtype<float>
 {
