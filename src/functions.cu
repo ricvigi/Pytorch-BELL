@@ -2,6 +2,7 @@
 
 
 
+
 __host__ int computeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernelSize)
 {
   int nBlocksH, nBlocksW, res;

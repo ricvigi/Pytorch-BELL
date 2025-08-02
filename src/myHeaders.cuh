@@ -1,10 +1,7 @@
-#ifndef MY_HEADERS_HPP
-#define MY_HEADERS_HPP
+#pragma once
+
 #include <torch/torch.h>
-#include <cusparse.h>         // cusparseSpMM
-#include <cuda_fp16.h>        // data types
 #include <type_traits>
-#include <cuda_runtime_api.h> // cudaMalloc, cudaMemcpy, etc.
 #include <cstdio>            // printf
 #include <cstdlib>           // EXIT_FAILURE
 #include <iostream>
@@ -16,6 +13,11 @@
 #include <cmath>
 #include <cstdint>         // int8_t
 
+#ifdef __CUDACC_
+#include <cuda_runtime_api.h> // cudaMalloc, cudaMemcpy, etc.
+#include <cusparse.h>         // cusparseSpMM
+#include <cuda_fp16.h>        // data types
+#endif
 
 #ifndef CHECK_CUDA
 #define CHECK_CUDA(func)                                                       \
@@ -45,7 +47,22 @@ extern int PRINT_DEBUG;
 
 const int EXIT_UNSUPPORTED = 2;
 
-template <typename T> int run (int argc, char **argv);
+template <typename T>
+struct Bell
+{
+  int ellBlockSize; /* Size of the blocks */
+  int ellCols;      /* Number of columns in ellValue array */
+  int *ellColInd;   /* Array of indices */
+  T *ellValue;      /* Values array */
+
+  #ifdef __CUDACC__
+  cusparseSpMatDescr_t spA = nullptr
+  #endif
+};
+
+
+
+template <>
 
 template<typename T>
 struct cuda_dtype;
@@ -65,19 +82,19 @@ struct cuda_dtype<__float>
 template<>
 struct cuda_dtype<float>
 {
-    static constexpr cudaDataType_t val = CUDA_R_32F;
+  static constexpr cudaDataType_t val = CUDA_R_32F;
 };
 
 template<>
 struct cuda_dtype<double>
 {
-    static constexpr cudaDataType_t val = CUDA_R_64F;
+  static constexpr cudaDataType_t val = CUDA_R_64F;
 };
 
 template<>
 struct cuda_dtype<int8_t>
 {
-    static constexpr cudaDataType_t val = CUDA_R_8I;
+  static constexpr cudaDataType_t val = CUDA_R_8I;
 };
 template <>
 struct cuda_dtype<int>
@@ -141,6 +158,7 @@ template <typename T> __host__ int getBellParams (torch::Tensor& A, int x, int y
 template <typename T> __host__ int run(int argc, char **argv);
 template <typename T> __host__ int run_int(int argc, char **argv);
 /* [END] Test functions */
+
 
 template <typename T>
 __host__ int convert_to_blockedell(torch::Tensor &A            /* in */,
@@ -389,5 +407,3 @@ void rowToColMajor(const T *r_major, T *c_major, int n_rows, int n_cols)
   }
 }
 
-
-#endif
