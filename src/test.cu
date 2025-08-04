@@ -77,8 +77,21 @@ __host__ int run(int argc, char **argv)
   int *dA_columns = nullptr;
   T *dA_values = nullptr;
   T *dA_dense = nullptr;
+  Bell<T> bell_mat;
 
   convert_to_blockedell<T>(A, matA, matSpA, dA_columns, dA_values, dA_dense, &ellBlockSize, &ellCols, ellColInd, ellValue);
+
+  /* NOTE: Move this logic inside getBellParams */
+  ellCols = ellBlockSize * ellCols;
+
+
+  /* [BEGIN] Assing blockedell elements to struct */
+  bell_mat.ellBlockSize = ellBlockSize;
+  bell_mat.ellCols = ellCols;
+  bell_mat.ellColInd = ellColInd;
+  bell_mat.ellValue = ellValue;
+  bell_mat.spMat = matSpA;
+  /* [END] Assing blockedell elements to struct */
 
   /* [END] Dense to sparse conversion */
 

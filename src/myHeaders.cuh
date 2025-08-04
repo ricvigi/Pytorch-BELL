@@ -13,11 +13,9 @@
 #include <cmath>
 #include <cstdint>         // int8_t
 
-#ifdef __CUDACC_
 #include <cuda_runtime_api.h> // cudaMalloc, cudaMemcpy, etc.
 #include <cusparse.h>         // cusparseSpMM
 #include <cuda_fp16.h>        // data types
-#endif
 
 #ifndef CHECK_CUDA
 #define CHECK_CUDA(func)                                                       \
@@ -55,14 +53,9 @@ struct Bell
   int *ellColInd;   /* Array of indices */
   T *ellValue;      /* Values array */
 
-  #ifdef __CUDACC__
-  cusparseSpMatDescr_t spA = nullptr
-  #endif
+  cusparseSpMatDescr_t spMat = nullptr;
 };
 
-
-
-template <>
 
 template<typename T>
 struct cuda_dtype;
@@ -74,10 +67,10 @@ struct cuda_dtype<at::Half>
 };
 
 template <>
-struct cuda_dtype<__float>
+struct cuda_dtype<__half>
 {
   static constexpr cudaDataType_t val = CUDA_R_16F;
-}
+};
 
 template<>
 struct cuda_dtype<float>
