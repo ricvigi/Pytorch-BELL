@@ -157,6 +157,10 @@ template <typename T> __host__ int run_int(int argc, char **argv);
 
 
 template <typename T>
+__host__ torch::Tensor to_sparse_blockedell_impl(torch::Tensor& dense);
+
+
+template <typename T>
 __host__ int convert_to_blockedell(torch::Tensor &A            /* in */,
                                    cusparseDnMatDescr_t &matA  /* in */,
                                    cusparseSpMatDescr_t &spA   /* out */,

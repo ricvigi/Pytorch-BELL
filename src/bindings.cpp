@@ -1,10 +1,9 @@
 #include "myHeaders.cuh"
 
 
-template <typename T>
-__host__ torch::Tensor to_sparse_blockedell_impl(torch::Tensor& dense);
 
-torch::Tensor to_sparse_blockedell(torch::Tensor& dense)
+
+std::tuple<torch::Tensor, BellMetadata> to_sparse_blockedell(torch::Tensor& dense)
 {
     return to_sparse_blockedell_impl<float>(dense);
 }
@@ -32,3 +31,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
     m.def("to_sparse_blockedell", &to_sparse_blockedell, "Convert to BlockedELL format");
 }
+
+
+
