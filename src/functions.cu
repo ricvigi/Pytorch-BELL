@@ -792,7 +792,6 @@ __host__ torch::Tensor to_sparse_blockedell_impl(const torch::Tensor &dense)
 
     err = getBellParams(dense, (int)dense.size(0), (int)dense.size(1), ellBlockSize, ellCols, ellColInd, ellValue);
 
-    count_non_zeros(T *mat, unsigned int rows, unsigned int cols, unsigned int *n_non_zeros)
     count_non_zeros(dense.contiguous().data_ptr<T>(), dense.size(0), dense.size(1), nnz);
 
     torch::ScalarType dtype = torch::CppTypeToScalarType<T>::value;
