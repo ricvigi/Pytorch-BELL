@@ -9,7 +9,7 @@ torch::Tensor to_sparse_blockedell(torch::Tensor& dense)
     return to_sparse_blockedell_impl<float>(dense);
 }
 
-ORCH_LIBRARY(my_sparse, m)
+TORCH_LIBRARY(my_sparse, m)
 {
     m.def("to_sparse_blockedell(Tensor self) -> (Tensor, __torch__.my_sparse.BellMetadata)");
 }
