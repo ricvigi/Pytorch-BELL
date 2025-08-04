@@ -804,35 +804,43 @@ __host__ inline void count_non_zeros_float(float *mat, unsigned int rows, unsign
 }
 
 template <typename T>
-__host__ torch::Tensor to_sparse_blockedell_impl(torch::Tensor &dense)
+__host__ std::tuple<torch::Tensor, BellMetadata> to_sparse_blockedell_impl(torch::Tensor &dense)
 {
-
     BellMetadata bell;
     unsigned int nnz;
     int ellBlockSize, ellCols;
     int *ellColInd;
     T *ellValue;
 
+    // Fill raw data from dense tensor
     int err = getBellParams(dense, (int)dense.size(0), (int)dense.size(1), ellBlockSize, ellCols, ellColInd, ellValue);
 
-    count_non_zeros_float(dense.contiguous().data_ptr<T>(), (unsigned int)dense.size(0), (unsigned int)dense.size(1), &nnz);
+    // Count non-zeros
+    count_non_zeros_float(
+        dense.contiguous().data_ptr<T>(),
+        (unsigned int)dense.size(0),
+        (unsigned int)dense.size(1),
+        &nnz);
 
     torch::ScalarType dtype = torch::CppTypeToScalarType<T>::value;
 
+    // Fill metadata struct
     bell.ellBlockSize = (unsigned int)ellBlockSize;
     bell.ellCols = (unsigned int)ellCols;
     bell.nnz = nnz;
     bell.size = {dense.size(0), dense.size(1)};
-    bell.ellColInd = torch::tensor(ellColInd);
-    bell.ellValue = torch::tensor(ellValue, dtype=dtype);
 
-    auto result = torch::empty_like(bell.ellValue);
+    // Construct tensors from raw pointers (non-owning)
+    bell.ellColInd = torch::from_blob(ellColInd, {dense.size(0) / ellBlockSize, ellCols}, torch::kInt32);
+    bell.ellValue = torch::from_blob(ellValue, {dense.size(0), ellCols}, dtype);
 
-    auto impl = result.unsafeGetTensorImpl();
-    impl->set_custom_data(std::make_shared<BellMetadata>(bell));
+    // You can optionally clone if you want to own the data
+    auto result = bell.ellValue.clone();
 
-    return result;
+    // Return both result tensor and metadata
+    return std::make_tuple(result, bell);
 }
+
 
 
 /* [BEGIN] Function instantiations */

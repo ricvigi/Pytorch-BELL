@@ -209,28 +209,7 @@ __host__ inline void count_non_zeros(T *mat, unsigned int rows, unsigned int col
   }
 }
 
-template <>
-__host__ inline void count_non_zeros<float>(float *mat, unsigned int rows, unsigned int cols, unsigned int *n_non_zeros)
-{
-  const float eps = 1e-9;
-  // number of non zero values in *mat
 
-  for (unsigned int i = 0; i < rows; ++i)
-  {
-    for (unsigned int j = 0; j < cols; ++j)
-    {
-      float t = 0.0f;
-      t += mat[i * cols + j];
-      if (fabs(t) > eps)
-      {
-        *n_non_zeros += 1;
-      } else
-      {
-        continue;
-      }
-    }
-  }
-}
 
 template <>
 __host__ inline void count_non_zeros<int>(int *mat, unsigned int rows, unsigned int cols, unsigned int *n_non_zeros)
