@@ -780,6 +780,36 @@ __host__ int execute_spmv(cusparseSpMatDescr_t spA    /* in */,
   return EXIT_SUCCESS;
 }
 
+template <typename T>
+__host__ torch::Tensor to_sparse_blockedell(const torch::Tensor &dense)
+{
+
+    BellMetadata bell;
+    unsigned int nnz;
+    int ellBlockSize, ellCols;
+    int *ellColInd;
+    T *ellValue;
+
+    err = getBellParams(dense, dense.size(0), dense.size(1), ellBlockSize, ellCols, ellColInd, ellValue);
+    count_non_zeros(T *mat, unsigned int rows, unsigned int cols, unsigned int *n_non_zeros)
+    count_non_zeros(dense.contiguous().data_ptr<T>(), dense.size(0), dense.size(1), nnz);
+
+    torch::ScalarType dtype = torch::CppTypeToScalarType<T>::value;
+
+    bell.ellBlockSize = (unsigned int)ellBlockSize;
+    bell.ellCols = (unsigned int)ellCols;
+    bell.nnz = nnz;
+    bell.size = {dense.size(0), dense.size(1)};
+    bell.ellColInd = torch::tensor(ellColInd);
+    bell.ellValue = torch::tensor(ellValue, dtype=dtype);
+
+    auto result = torch::empty_like(bell.ellValue);
+
+    auto impl = result.unsafeGetTensorImpl();
+    impl->set_custom_data(std::make_shared<BellMetadata>(bell));
+
+    return result;
+}
 
 
 /* [BEGIN] Function instantiations */
@@ -829,6 +859,7 @@ template __host__ int execute_spmv<float>(cusparseSpMatDescr_t spA, cusparseDnMa
 template __host__ int execute_spmv<at::Half>(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t vecX, cusparseDnMatDescr_t vecY, at::Half alpha, at::Half beta);
 template __host__ int execute_spmv<int8_t>(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t vecX, cusparseDnMatDescr_t vecY, int8_t alpha, int8_t beta);
 template __host__ int execute_spmv<int>(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t vecX, cusparseDnMatDescr_t vecY, int alpha, int beta);
+
 
 
 /* [END] Function instantiations */

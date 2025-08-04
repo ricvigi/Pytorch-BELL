@@ -1,17 +1,18 @@
 #pragma once
 
 #include <torch/torch.h>
+#include <torch/extension.h>
 #include <type_traits>
 #include <cstdio>            // printf
 #include <cstdlib>           // EXIT_FAILURE
 #include <iostream>
-#include <torch/torch.h>
 #include <ATen/ATen.h>
 #include <omp.h>
 #include <math.h>
 #include <cstdio>
 #include <cmath>
 #include <cstdint>         // int8_t
+#include <memory>
 
 #include <cuda_runtime_api.h> // cudaMalloc, cudaMemcpy, etc.
 #include <cusparse.h>         // cusparseSpMM
@@ -46,15 +47,19 @@ extern int PRINT_DEBUG;
 const int EXIT_UNSUPPORTED = 2;
 
 template <typename T>
-struct Bell
+struct BellMetadata
 {
-  int ellBlockSize; /* Size of the blocks */
-  int ellCols;      /* Number of columns in ellValue array */
-  int *ellColInd;   /* Array of indices */
-  T *ellValue;      /* Values array */
+  unsigned int ellBlockSize; /* Size of the blocks */
+  unsigned int ellCols;      /* Number of columns in ellValue array */
+  torch::Tensor ellColInd;   /* Array of indices */
+  torch::Tensor ellValue;      /* Values array */
+  std::vector<int64_t> size;
+  unsigned int nnz;
+  // Layout layout = NULL;
 
   cusparseSpMatDescr_t spMat = nullptr;
 };
+
 
 
 template<typename T>
@@ -151,6 +156,7 @@ template <typename T> __host__ int getBellParams (torch::Tensor& A, int x, int y
 template <typename T> __host__ int run(int argc, char **argv);
 template <typename T> __host__ int run_int(int argc, char **argv);
 /* [END] Test functions */
+
 
 
 template <typename T>
