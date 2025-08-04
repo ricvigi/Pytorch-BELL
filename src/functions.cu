@@ -845,7 +845,7 @@ template __host__ int convert_to_blockedell<double>(torch::Tensor &A , cusparseD
 template __host__ int convert_to_blockedell<float>(torch::Tensor &A , cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, int *dA_columns, float *dA_values,
                                                    float *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, float *ellValue);
 // template __host__ int convert_to_blockedell<__half>(torch::Tensor &A, cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, int *dA_columns, __half *dA_values,
-                                                    __half *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, __half *ellValue);
+//                                                     __half *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, __half *ellValue);
 template __host__ int convert_to_blockedell<int>(torch::Tensor &A , cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, int *dA_columns, int *dA_values,
                                                  int *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, int *ellValue);
 
