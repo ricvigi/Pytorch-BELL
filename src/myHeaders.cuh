@@ -157,7 +157,7 @@ template <typename T> __host__ int run_int(int argc, char **argv);
 
 
 template <typename T>
-__host__ torch::Tensor to_sparse_blockedell_impl(torch::Tensor& dense);
+__host__ std::tuple<torch::Tensor, BellMetadata> to_sparse_blockedell_impl(torch::Tensor &dense);
 
 
 template <typename T>
