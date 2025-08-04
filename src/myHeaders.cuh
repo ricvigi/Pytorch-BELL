@@ -46,7 +46,6 @@ extern int PRINT_DEBUG;
 
 const int EXIT_UNSUPPORTED = 2;
 
-template <typename T>
 struct BellMetadata
 {
   unsigned int ellBlockSize; /* Size of the blocks */
