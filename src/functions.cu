@@ -781,7 +781,7 @@ __host__ int execute_spmv(cusparseSpMatDescr_t spA    /* in */,
 }
 
 template <typename T>
-__host__ torch::Tensor to_sparse_blockedell_impl(const torch::Tensor &dense)
+__host__ torch::Tensor to_sparse_blockedell_impl(torch::Tensor &dense)
 {
 
     BellMetadata bell;

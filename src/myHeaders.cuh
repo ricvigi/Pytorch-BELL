@@ -55,8 +55,6 @@ struct BellMetadata
   std::vector<int64_t> size;
   unsigned int nnz;
   // Layout layout = NULL;
-
-  cusparseSpMatDescr_t spMat = nullptr;
 };
 
 
