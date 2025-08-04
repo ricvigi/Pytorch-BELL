@@ -2,7 +2,12 @@
 
 
 template <typename T>
-__host__ torch::Tensor to_sparse_blockedell(const torch::Tensor& dense);
+__host__ torch::Tensor to_sparse_blockedell_impl(const torch::Tensor& dense);
+
+torch::Tensor to_sparse_blockedell(const torch::Tensor& dense)
+{
+    return to_sparse_blockedell_impl<float>(dense);
+}
 
 TORCH_LIBRARY(my_sparse, m)
 {

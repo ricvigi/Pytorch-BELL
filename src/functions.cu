@@ -781,7 +781,7 @@ __host__ int execute_spmv(cusparseSpMatDescr_t spA    /* in */,
 }
 
 template <typename T>
-__host__ torch::Tensor to_sparse_blockedell(const torch::Tensor &dense)
+__host__ torch::Tensor to_sparse_blockedell_impl(const torch::Tensor &dense)
 {
 
     BellMetadata bell;
@@ -860,6 +860,7 @@ template __host__ int execute_spmv<at::Half>(cusparseSpMatDescr_t spA, cusparseD
 template __host__ int execute_spmv<int8_t>(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t vecX, cusparseDnMatDescr_t vecY, int8_t alpha, int8_t beta);
 template __host__ int execute_spmv<int>(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t vecX, cusparseDnMatDescr_t vecY, int alpha, int beta);
 
+template torch::Tensor to_sparse_blockedell_impl<float>(const torch::Tensor& dense);
 
 
 /* [END] Function instantiations */
