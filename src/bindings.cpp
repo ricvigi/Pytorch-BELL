@@ -5,18 +5,19 @@
 
 std::tuple<torch::Tensor, BellMetadata> to_sparse_blockedell(torch::Tensor &dense)
 {
-    return to_sparse_blockedell_impl<float>(dense);
+  return to_sparse_blockedell_impl<float>(dense);
 }
 
 torch::Tensor to_sparse_blockedell_temp(torch::Tensor& dense)
 {
-    return to_sparse_blockedell_impl<float>(dense).first;
+  auto [tensor, meta] = to_sparse_blockedell_impl<float>(dense);
+  return tensor;
 }
 
 
 TORCH_LIBRARY(my_sparse, m)
 {
-    m.def("to_sparse_blockedell(Tensor self) -> (Tensor, __torch__.my_sparse.BellMetadata)");
+  m.def("to_sparse_blockedell(Tensor self) -> (Tensor, __torch__.my_sparse.BellMetadata)");
 }
 
 // // Register the implementation on CPU
@@ -39,7 +40,7 @@ TORCH_LIBRARY(my_sparse, m)
 // }
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
 {
-    m.def("to_sparse_blockedell", &to_sparse_blockedell_temp, "Convert to BlockedELL format");
+  m.def("to_sparse_blockedell", &to_sparse_blockedell_temp, "Convert to BlockedELL format");
 }
 
 
