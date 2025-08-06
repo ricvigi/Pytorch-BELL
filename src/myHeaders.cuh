@@ -13,6 +13,7 @@
 #include <cmath>
 #include <cstdint>         // int8_t
 #include <memory>
+#include <stdint.h>
 
 #include <cuda_runtime_api.h> // cudaMalloc, cudaMemcpy, etc.
 #include <cusparse.h>         // cusparseSpMM

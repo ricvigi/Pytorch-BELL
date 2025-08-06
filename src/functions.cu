@@ -1,3 +1,5 @@
+#pragma once
+
 #include "myHeaders.cuh"
 
 
@@ -454,10 +456,10 @@ __host__ int convert_to_blockedell(torch::Tensor &A            /* in */,
                                    int *ellColInd              /* in */,
                                    T *ellValue                 /* in */)
 {
-  unsigned int A_rows = A.size(0);
-  unsigned int A_cols = A.size(1);
+  uint64_t A_rows = A.size(0);
+  uint64_t A_cols = A.size(1);
   std::cout << A_rows << " " << A_cols << std::endl;
-  unsigned int lda = A_cols;
+  uint64_t lda = A_cols;
 
   constexpr cudaDataType_t cuda_type = cuda_dtype<T>::val;
 
@@ -540,10 +542,10 @@ __host__ int convert_to_blockedell(torch::Tensor &A            /* in */,
 //                                            __half *ellValue            /* in */)
 // {
 //   using T = __half;
-//   unsigned int A_rows = A.size(0);
-//   unsigned int A_cols = A.size(1);
+//   uint64_t A_rows = A.size(0);
+//   uint64_t A_cols = A.size(1);
 //   printf("%d %d\n", A_rows, A_cols);
-//   unsigned int lda = A_cols;
+//   uint64_t lda = A_cols;
 //
 //   constexpr cudaDataType_t cuda_type = CUDA_R_8I;
 //
@@ -630,10 +632,10 @@ __host__ int convert_to_blockedell<int8_t>(torch::Tensor &A            /* in */,
                                            int8_t *ellValue            /* in */)
 {
   using T = int8_t;
-  unsigned int A_rows = A.size(0);
-  unsigned int A_cols = A.size(1);
+  uint64_t A_rows = A.size(0);
+  uint64_t A_cols = A.size(1);
   printf("%d %d\n", A_rows, A_cols);
-  unsigned int lda = A_cols;
+  uint64_t lda = A_cols;
 
   constexpr cudaDataType_t cuda_type = CUDA_R_8I;
 
@@ -782,14 +784,14 @@ __host__ int execute_spmv(cusparseSpMatDescr_t spA    /* in */,
 }
 
 
-__host__ inline void count_non_zeros_float(float *mat, unsigned int rows, unsigned int cols, unsigned int *n_non_zeros)
+__host__ inline void count_non_zeros_float(float *mat, uint64_t rows, uint64_t cols, uint64_t *n_non_zeros)
 {
   const float eps = 1e-9;
   // number of non zero values in *mat
 
-  for (unsigned int i = 0; i < rows; ++i)
+  for (uint64_t i = 0; i < rows; ++i)
   {
-    for (unsigned int j = 0; j < cols; ++j)
+    for (uint64_t j = 0; j < cols; ++j)
     {
       float t = 0.0f;
       t += mat[i * cols + j];
@@ -808,7 +810,7 @@ template <typename T>
 __host__ std::tuple<torch::Tensor, BellMetadata> to_sparse_blockedell_impl(torch::Tensor &dense)
 {
     BellMetadata bell;
-    unsigned int nnz;
+    uint64_t nnz;
     int ellBlockSize, ellCols;
     int *ellColInd;
     T *ellValue;
@@ -819,15 +821,15 @@ __host__ std::tuple<torch::Tensor, BellMetadata> to_sparse_blockedell_impl(torch
     // Count non-zeros
     count_non_zeros_float(
         dense.contiguous().data_ptr<T>(),
-        (unsigned int)dense.size(0),
-        (unsigned int)dense.size(1),
+        (uint64_t)dense.size(0),
+        (uint64_t)dense.size(1),
         &nnz);
 
     torch::ScalarType dtype = torch::CppTypeToScalarType<T>::value;
 
     // Fill metadata struct
-    bell.ellBlockSize = (unsigned int)ellBlockSize;
-    bell.ellCols = (unsigned int)ellCols;
+    bell.ellBlockSize = (uint64_t)ellBlockSize;
+    bell.ellCols = (uint64_t)ellCols;
     bell.nnz = nnz;
     bell.size = {dense.size(0), dense.size(1)};
 
@@ -846,23 +848,22 @@ __host__ std::tuple<torch::Tensor, BellMetadata> to_sparse_blockedell_impl(torch
 
 /* [BEGIN] Function instantiations */
 
-template __host__ int iterativeComputeZeroBlocks<float>(torch::Tensor&, int, int, int);
-template __host__ int iterativeComputeZeroBlocks<double>(torch::Tensor&, int, int, int);
-// template __host__ int iterativeComputeZeroBlocks<at::Half>(torch::Tensor&, int, int, int);
-template __host__ int iterativeComputeZeroBlocks<int8_t>(torch::Tensor&, int, int, int);
-template __host__ int iterativeComputeZeroBlocks<int>(torch::Tensor&, int, int, int);
+template __host__ int iterativeComputeZeroBlocks<float>(torch::Tensor&, uint64_t, uint64_t, uint64_t);
+template __host__ int iterativeComputeZeroBlocks<double>(torch::Tensor&, uint64_t, uint64_t, uint64_t);
+// template __host__ int iterativeComputeZeroBlocks<at::Half>(torch::Tensor&, uint64_t, uint64_t, uint64_t);
+template __host__ int iterativeComputeZeroBlocks<int8_t>(torch::Tensor&, uint64_t, uint64_t, uint64_t);
+template __host__ int iterativeComputeZeroBlocks<int>(torch::Tensor&, uint64_t, uint64_t, uint64_t);
 
-template __host__ torch::Tensor iterativeComputeEllCols<float>(torch::Tensor&, int, int, int);
-template __host__ torch::Tensor iterativeComputeEllCols<double>(torch::Tensor&, int, int, int);
+template __host__ torch::Tensor iterativeComputeEllCols<float>(torch::Tensor&, uint64_t, uint64_t, uint64_t);
+template __host__ torch::Tensor iterativeComputeEllCols<double>(torch::Tensor&, uint64_t, uint64_t, uint64_t);
 // template __host__ torch::Tensor iterativeComputeEllCols<at::Half>(torch::Tensor&, int, int, int);
-template __host__ torch::Tensor iterativeComputeEllCols<int8_t>(torch::Tensor&, int, int, int);
-template __host__ torch::Tensor iterativeComputeEllCols<int>(torch::Tensor&, int, int, int);
+template __host__ torch::Tensor iterativeComputeEllCols<int8_t>(torch::Tensor&, uint64_t, uint64_t, uint64_t);
+template __host__ torch::Tensor iterativeComputeEllCols<int>(torch::Tensor&, uint64_t, uint64_t, uint64_t);
 
-template __host__ void getEllValues<float>(torch::Tensor&, float*, int*, int, int, int);
-template __host__ void getEllValues<double>(torch::Tensor&, double*, int*, int, int, int);
-// template __host__ void getEllValues<at::Half>(torch::Tensor&, at::Half*, int*, int, int, int);
-template __host__ void getEllValues<int8_t>(torch::Tensor&, int8_t*, int*, int, int, int);
-template __host__ void getEllValues<int>(torch::Tensor&, int*, int*, int, int, int);
+template __host__ void getEllValues<float>(torch::Tensor&, float*, int32_t*, uint64_t, uint64_t, uint16_t);
+template __host__ void getEllValues<double>(torch::Tensor&, double*, int32_t*, uint64_t, uint64_t, uint16_t);
+template __host__ void getEllValues<int8_t>(torch::Tensor& A, int8_t*, int32_t*, uint64_t, uint64_t, uint16_t);
+template __host__ void getEllValues<int>(torch::Tensor&, int*, int32_t*, uint64_t, uint64_t, uint16_t);
 
 template __host__ int getBellParams<float>(torch::Tensor&, int, int, int&, int&, int*&, float*&);
 template __host__ int getBellParams<double>(torch::Tensor&, int, int, int&, int&, int*&, double*&);
