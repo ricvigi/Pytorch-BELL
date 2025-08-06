@@ -13,11 +13,15 @@
 #include <cmath>
 #include <cstdint>         // int8_t
 #include <memory>
-#include <stdint.h>
 
 #include <cuda_runtime_api.h> // cudaMalloc, cudaMemcpy, etc.
 #include <cusparse.h>         // cusparseSpMM
 #include <cuda_fp16.h>        // data types
+
+
+
+namespace sparse_blockedell
+{
 
 #ifndef CHECK_CUDA
 #define CHECK_CUDA(func)                                                       \
@@ -43,13 +47,11 @@
 }
 #endif
 
-namespace sparse_blockedell
-{
-
-
 extern int PRINT_DEBUG;
 
 const int EXIT_UNSUPPORTED = 2;
+
+const int ALLOW_NESTED = 1;
 
 struct BellMetadata
 {
