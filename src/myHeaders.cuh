@@ -42,6 +42,10 @@
 }
 #endif
 
+namespace sparse_blockedell
+{
+
+
 extern int PRINT_DEBUG;
 
 const int EXIT_UNSUPPORTED = 2;
@@ -409,3 +413,5 @@ void rowToColMajor(const T *r_major, T *c_major, int n_rows, int n_cols)
   }
 }
 
+
+}

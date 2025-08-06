@@ -1,7 +1,8 @@
 #include "myHeaders.cuh"
 
 
-
+namespace sparse_blockedell
+{
 
 __host__ int computeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernelSize)
 {
@@ -896,3 +897,4 @@ template __host__ std::tuple<torch::Tensor, BellMetadata> to_sparse_blockedell_i
 
 /* [END] Function instantiations */
 
+}
