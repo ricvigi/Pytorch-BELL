@@ -293,7 +293,7 @@ __host__ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, in
    * If you remove this, or set it to 0, all calls to functions that contain parallel regions, if called
    * when already inside a parallel region, will be executed sequentially, not in parallel.
    */
-  omp_set_nested(1);
+  omp_set_nested(ALLOW_NESTED);
 
   /* Matrix sizes checks */
   if (x != y) // TODO: Change this, matrix can also not be square, although the block must be square. This implies that both x and y must be divisibile by the chosen block-size.
@@ -425,14 +425,6 @@ __host__ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, in
    *
    */
 
-  // if (PRINT_DEBUG)
-  // {
-  //   std::cout << A << std::endl;
-  //   std::cout << bSums << std::endl;
-  //   printMat(ellColInd, rows, cols);
-  //   printEllValue(ellValue, rows, cols, ellBlockSize);
-  // }
-
   printf("We can filter out %d zeroes with a kernel of size %d\n", zeroCount, ellBlockSize);
   printf("Matrix has %d zero blocks of size %d\n", zeroCount / (ellBlockSize*ellBlockSize), ellBlockSize);
   printf("Total time needed for computation: %7.6f\n", end - start);
@@ -523,184 +515,6 @@ __host__ int convert_to_blockedell(torch::Tensor &A            /* in */,
   // execute Sparse to Dense conversion
   CHECK_CUSPARSE(cusparseDenseToSparse_convert(conversionHandle, matA, spA, CUSPARSE_DENSETOSPARSE_ALG_DEFAULT, dBuffer))
   /* [END] Dense to sparse conversion */
-
-  CHECK_CUDA(cudaFree(dBuffer))
-  CHECK_CUSPARSE(cusparseDestroy(conversionHandle))
-  return EXIT_SUCCESS;
-}
-
-// template <>
-// __host__ int convert_to_blockedell<__half>(torch::Tensor &A            /* in */,
-//                                            cusparseDnMatDescr_t &matA  /* in */,
-//                                            cusparseSpMatDescr_t &spA   /* out */,
-//                                            int *dA_columns             /* in */,
-//                                            __half *dA_values           /* in */,
-//                                            __half *dA_dense            /* in */,
-//                                            int *ellBlockSize           /* in */,
-//                                            int *ellCols                /* in */,
-//                                            int *ellColInd              /* in */,
-//                                            __half *ellValue            /* in */)
-// {
-//   using T = __half;
-//   uint64_t A_rows = A.size(0);
-//   uint64_t A_cols = A.size(1);
-//   printf("%d %d\n", A_rows, A_cols);
-//   uint64_t lda = A_cols;
-//
-//   constexpr cudaDataType_t cuda_type = CUDA_R_8I;
-//
-//   T *hA = reinterpret_cast<T*>(A.contiguous().data_ptr<at::Half>());
-//
-//   // Get the ellColInd array for matrix A
-//   int err;
-//
-//
-//   err = getBellParams<at::Half>(A, A_rows, A_cols, *ellBlockSize, *ellCols, ellColInd, ellValue);
-//   if (err != 0)
-//   {
-//     printf("Error code %d, exiting!\n", err);
-//     fflush(stdout);
-//     return err;
-//   }
-//   // __half raw_ellValue = reinterpret_cast<__half*>(ellValue); // ATTENTION: As of now we don't have any use for ellValue.
-//
-//   // NOTE: ellCols is usually considered to be the number of columns in ell format, NOT the number of blocks (of the ell format).
-//   *ellCols = (*ellBlockSize) * (*ellCols);
-//   // Device memory management
-//   int ellColInd_size = A_rows * (*ellCols);
-//   cudaStream_t stream;
-//   CHECK_CUDA(cudaStreamCreate(&stream))
-//
-//   CHECK_CUDA(cudaMallocAsync((void**) &dA_dense, A_rows * A_cols * sizeof(T), stream))
-//   CHECK_CUDA(cudaMallocAsync((void**) &dA_columns, ellColInd_size * sizeof(T), stream))
-//   CHECK_CUDA(cudaMallocAsync((void**) &dA_values, A_rows * (*ellCols) * sizeof(T), stream))
-//   CHECK_CUDA(cudaMemcpyAsync(dA_dense, hA, A_rows * A_cols * sizeof(T), cudaMemcpyHostToDevice, stream))
-//   CHECK_CUDA(cudaMemcpyAsync(dA_columns, ellColInd, ellColInd_size * sizeof(T), cudaMemcpyHostToDevice, stream))
-//   CHECK_CUDA(cudaMemsetAsync(dA_values, T(0), A_rows * (*ellCols) * sizeof(T), stream))
-//   CHECK_CUDA(cudaStreamSynchronize(stream))
-//
-//   /* [BEGIN] Dense to sparse conversion */
-//   // To create a conversion you need a dense matrix to convert it into a sparse matrix. If you want to store matrix A
-//   // in a sparse format, you need to convert A's dense representation to sparse!
-//   cusparseHandle_t conversionHandle = NULL;
-//   void *dBuffer    = NULL;
-//   size_t bufferSize = 0;
-//   CHECK_CUSPARSE(cusparseCreate(&conversionHandle))
-//
-//   /* ATTENTION: remember that leading dimension is number of columns if we use CUSPARSE_ORDER_ROW, and vice versa */
-//   // Create dense matrix A
-//   CHECK_CUSPARSE( cusparseCreateDnMat(&matA, A_rows, A_cols, lda, dA_dense,
-//                                       cuda_type, CUSPARSE_ORDER_ROW) )
-//
-//   // Create sparse matrix B in Blocked ELL format
-//   CHECK_CUSPARSE( cusparseCreateBlockedEll(&spA, A_rows, A_cols,
-//                                            (*ellBlockSize), (*ellCols),
-//                                            dA_columns, dA_values,
-//                                            CUSPARSE_INDEX_32I,
-//                                            CUSPARSE_INDEX_BASE_ZERO,
-//                                            cuda_type) )
-//
-//   // allocate an external buffer if needed
-//   CHECK_CUSPARSE(cusparseDenseToSparse_bufferSize(conversionHandle, matA, spA,
-//                                                   CUSPARSE_DENSETOSPARSE_ALG_DEFAULT, &bufferSize))
-//   CHECK_CUDA(cudaMalloc(&dBuffer, bufferSize))
-//
-//   // execute Sparse to Dense conversion
-//   CHECK_CUSPARSE(cusparseDenseToSparse_analysis(conversionHandle, matA, spA, CUSPARSE_DENSETOSPARSE_ALG_DEFAULT, dBuffer))
-//
-//   // execute Sparse to Dense conversion
-//   CHECK_CUSPARSE(cusparseDenseToSparse_convert(conversionHandle, matA, spA, CUSPARSE_DENSETOSPARSE_ALG_DEFAULT, dBuffer))
-//   /* [END] Dense to sparse conversion */
-//
-//
-//   CHECK_CUDA(cudaFree(dBuffer))
-//   CHECK_CUSPARSE(cusparseDestroy(conversionHandle))
-//   return EXIT_SUCCESS;
-// }
-
-/* ATTENTION: This is a specialization for INT type, which requires the sparse matrix to have an 8 bit integer */
-template <>
-__host__ int convert_to_blockedell<int8_t>(torch::Tensor &A            /* in */,
-                                           cusparseDnMatDescr_t &matA  /* in */,
-                                           cusparseSpMatDescr_t &spA   /* out */,
-                                           int *dA_columns             /* in */,
-                                           int8_t *dA_values           /* in */,
-                                           int8_t *dA_dense            /* in */,
-                                           int *ellBlockSize           /* in */,
-                                           int *ellCols                /* in */,
-                                           int *ellColInd              /* in */,
-                                           int8_t *ellValue            /* in */)
-{
-  using T = int8_t;
-  uint64_t A_rows = A.size(0);
-  uint64_t A_cols = A.size(1);
-  printf("%d %d\n", A_rows, A_cols);
-  uint64_t lda = A_cols;
-
-  constexpr cudaDataType_t cuda_type = CUDA_R_8I;
-
-  T *hA = A.contiguous().data_ptr<T>();
-
-  // Get the ellColInd array for matrix A
-  int err;
-
-
-  err = getBellParams<T>(A, A_rows, A_cols, *ellBlockSize, *ellCols, ellColInd, ellValue);
-  if (err != 0)
-  {
-    printf("Error code %d, exiting!\n", err);
-    fflush(stdout);
-    return err;
-  }
-
-  // ATTENTION: ellCols is usually considered to be the number of columns in ell format, NOT the number of blocks (of the ell format).
-  *ellCols = (*ellBlockSize) * (*ellCols);
-  // Device memory management
-  int ellColInd_size = A_rows * (*ellCols);
-  cudaStream_t stream;
-  CHECK_CUDA(cudaStreamCreate(&stream))
-
-  CHECK_CUDA(cudaMallocAsync((void**) &dA_dense, A_rows * A_cols * sizeof(T), stream))
-  CHECK_CUDA(cudaMallocAsync((void**) &dA_columns, ellColInd_size * sizeof(int), stream))
-  CHECK_CUDA(cudaMallocAsync((void**) &dA_values, A_rows * (*ellCols) * sizeof(T), stream))
-  CHECK_CUDA(cudaMemcpyAsync(dA_dense, hA, A_rows * A_cols * sizeof(T), cudaMemcpyHostToDevice, stream))
-  CHECK_CUDA(cudaMemcpyAsync(dA_columns, ellColInd, ellColInd_size * sizeof(int), cudaMemcpyHostToDevice, stream))
-  CHECK_CUDA(cudaMemsetAsync(dA_values, T(0), A_rows * (*ellCols) * sizeof(T), stream))
-  CHECK_CUDA(cudaStreamSynchronize(stream))
-
-  /* [BEGIN] Dense to sparse conversion */
-  // To create a conversion you need a dense matrix to convert it into a sparse matrix. If you want to store matrix A
-  // in a sparse format, you need to convert A's dense representation to sparse!
-  cusparseHandle_t conversionHandle = NULL;
-  void *dBuffer    = NULL;
-  size_t bufferSize = 0;
-  CHECK_CUSPARSE(cusparseCreate(&conversionHandle))
-
-  /* ATTENTION: remember that leading dimension is number of columns if we use CUSPARSE_ORDER_ROW, and vice versa */
-  // Create dense matrix A
-  CHECK_CUSPARSE( cusparseCreateDnMat(&matA, A_rows, A_cols, lda, dA_dense,
-                                      cuda_type, CUSPARSE_ORDER_ROW) )
-
-  // Create sparse matrix B in Blocked ELL format
-  CHECK_CUSPARSE( cusparseCreateBlockedEll(&spA, A_rows, A_cols,
-                                           (*ellBlockSize), (*ellCols),
-                                           dA_columns, dA_values,
-                                           CUSPARSE_INDEX_32I,
-                                           CUSPARSE_INDEX_BASE_ZERO,
-                                           cuda_type) )
-
-  // allocate an external buffer if needed
-  CHECK_CUSPARSE(cusparseDenseToSparse_bufferSize(conversionHandle, matA, spA,
-                                                  CUSPARSE_DENSETOSPARSE_ALG_DEFAULT, &bufferSize))
-  CHECK_CUDA(cudaMalloc(&dBuffer, bufferSize))
-
-  // execute Sparse to Dense conversion
-  CHECK_CUSPARSE(cusparseDenseToSparse_analysis(conversionHandle, matA, spA, CUSPARSE_DENSETOSPARSE_ALG_DEFAULT, dBuffer))
-
-  // execute Sparse to Dense conversion
-  CHECK_CUSPARSE(cusparseDenseToSparse_convert(conversionHandle, matA, spA, CUSPARSE_DENSETOSPARSE_ALG_DEFAULT, dBuffer))
-  /* [END] Dense to sparse conversion */
-
 
   CHECK_CUDA(cudaFree(dBuffer))
   CHECK_CUSPARSE(cusparseDestroy(conversionHandle))
@@ -809,39 +623,38 @@ __host__ inline void count_non_zeros_float(float *mat, uint64_t rows, uint64_t c
 template <typename T>
 __host__ std::tuple<torch::Tensor, BellMetadata> to_sparse_blockedell_impl(torch::Tensor &dense)
 {
-    BellMetadata bell;
-    uint64_t nnz;
-    int ellBlockSize, ellCols;
-    int *ellColInd;
-    T *ellValue;
+  BellMetadata bell;
+  uint64_t nnz;
+  int ellBlockSize, ellCols;
+  int *ellColInd;
+  T *ellValue;
 
-    // Fill raw data from dense tensor
-    int err = getBellParams(dense, (int)dense.size(0), (int)dense.size(1), ellBlockSize, ellCols, ellColInd, ellValue);
+  // Fill raw data from dense tensor
+  int err = getBellParams(dense, (int)dense.size(0), (int)dense.size(1), ellBlockSize, ellCols, ellColInd, ellValue);
 
-    // Count non-zeros
-    count_non_zeros_float(
-        dense.contiguous().data_ptr<T>(),
-        (uint64_t)dense.size(0),
-        (uint64_t)dense.size(1),
-        &nnz);
+  // Count non-zeros
+  count_non_zeros_float(dense.contiguous().data_ptr<T>(),
+                        (uint64_t)dense.size(0),
+                        (uint64_t)dense.size(1),
+                        &nnz);
 
-    torch::ScalarType dtype = torch::CppTypeToScalarType<T>::value;
+  torch::ScalarType dtype = torch::CppTypeToScalarType<T>::value;
 
-    // Fill metadata struct
-    bell.ellBlockSize = (uint64_t)ellBlockSize;
-    bell.ellCols = (uint64_t)ellCols;
-    bell.nnz = nnz;
-    bell.size = {dense.size(0), dense.size(1)};
+  // Fill metadata struct
+  bell.ellBlockSize = (uint64_t)ellBlockSize;
+  bell.ellCols = (uint64_t)ellCols;
+  bell.nnz = nnz;
+  bell.size = {dense.size(0), dense.size(1)};
 
-    // Construct tensors from raw pointers (non-owning)
-    bell.ellColInd = torch::from_blob(ellColInd, {dense.size(0) / ellBlockSize, ellCols}, torch::kInt32);
-    bell.ellValue = torch::from_blob(ellValue, {dense.size(0), ellCols}, dtype);
+  // Construct tensors from raw pointers (non-owning)
+  bell.ellColInd = torch::from_blob(ellColInd, {dense.size(0) / ellBlockSize, ellCols}, torch::kInt32);
+  bell.ellValue = torch::from_blob(ellValue, {dense.size(0), ellCols}, dtype);
 
-    // You can optionally clone if you want to own the data
-    auto result = bell.ellValue.clone();
+  // You can optionally clone if you want to own the data
+  auto result = bell.ellValue.clone();
 
-    // Return both result tensor and metadata
-    return std::make_tuple(result, bell);
+  // Return both result tensor and metadata
+  return std::make_tuple(result, bell);
 }
 
 

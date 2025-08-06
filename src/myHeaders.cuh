@@ -53,12 +53,12 @@ const int EXIT_UNSUPPORTED = 2;
 
 struct BellMetadata
 {
-  unsigned int ellBlockSize; /* Size of the blocks */
-  unsigned int ellCols;      /* Number of columns in ellValue array */
+  uint16_t ellBlockSize; /* Size of the blocks */
+  utin64_t ellCols;      /* Number of columns in ellValue array */
   torch::Tensor ellColInd;   /* Array of indices */
   torch::Tensor ellValue;      /* Values array */
-  std::vector<int64_t> size;
-  unsigned int nnz;
+  std::vector<uint64_t> size;
+  uint64_t nnz;
   // Layout layout = NULL;
 };
 
@@ -139,20 +139,20 @@ struct scalar_type<int>
 
 template <typename T>
 __host__ int getBellParams(torch::Tensor& A,         /* in */
-                           int x,                    /* in */
-                           int y,                    /* in */
-                           int& ellBlockSize,        /* out */
-                           int& ellCols,             /* out */
-                           int*& ellColInd,          /* out */
+                           uint64_t x,                    /* in */
+                           uint64_t y,                    /* in */
+                           uint16_t& ellBlockSize,        /* out */
+                           uint64_t& ellCols,             /* out */
+                           int32_t*& ellColInd,          /* out */
                            T*& ellValue);            /* out */
 
-__host__ int computeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernelSize);
-template <typename T> __host__ int iterativeComputeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernelSize);
-__host__ torch::Tensor computeEllCols (torch::Tensor& A, int rows, int cols, int kernelSize);
-template <typename T> __host__ torch::Tensor iterativeComputeEllCols (torch::Tensor& A, int rows, int cols, int kernelSize);
-template <typename T> __host__ void getEllColInd (torch::Tensor &bSums, int *ellColInd, int rows, int cols);
-template <typename T> __host__ void getEllValues (torch::Tensor& A, T *ellValue, int *ellColInd, int rows, int cols, int ellBlockSize);
-template <typename T> __host__ int getBellParams (torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCols, int*& ellColInd, T*& ellValue);
+__host__ int computeZeroBlocks (torch::Tensor &A, uint64_t rows, uint64_t cols, uint64_t kernelSize);
+template <typename T> __host__ int iterativeComputeZeroBlocks (torch::Tensor &A, uint64_t rows, uint64_t cols, uint64_t kernelSize);
+__host__ torch::Tensor computeEllCols (torch::Tensor& A, uint64_t rows, uint64_t cols, uint64_t kernelSize);
+template <typename T> __host__ torch::Tensor iterativeComputeEllCols (torch::Tensor& A, uint64_t rows, uint64_t cols, uint64_t kernelSize);
+template <typename T> __host__ void getEllColInd (torch::Tensor &bSums, int32_t *ellColInd, uint64_t rows, uint64_t cols);
+template <typename T> __host__ void getEllValues (torch::Tensor& A, T *ellValue, int32_t *ellColInd, uint64_t rows, uint64_t cols, uint16_t ellBlockSize);
+template <typename T> __host__ int getBellParams (torch::Tensor& A, uint64_t x, uint64_t y, uint16_t& ellBlockSize, uint64_t& ellCols, int32_t*& ellColInd, T*& ellValue);
 
 /* [BEGIN] Test functions */
 template <typename T> __host__ int run(int argc, char **argv);
@@ -169,12 +169,12 @@ template <typename T>
 __host__ int convert_to_blockedell(torch::Tensor &A            /* in */,
                                    cusparseDnMatDescr_t &matA  /* in */,
                                    cusparseSpMatDescr_t &spA   /* out */,
-                                   int *dA_columns             /* in */,
+                                   uint64_t *dA_columns             /* in */,
                                    T *dA_values                /* in */,
                                    T *dA_dense                 /* in */,
-                                   int *ellBlockSize           /* in */,
-                                   int *ellCols                /* in */,
-                                   int *ellColInd              /* in */,
+                                   uint16_t *ellBlockSize           /* in */,
+                                   uint64_t *ellCols                /* in */,
+                                   int32_t *ellColInd              /* in */,
                                    T *ellValue                 /* in */);
 
 
@@ -196,14 +196,14 @@ __host__ int execute_spmv(cusparseSpMatDescr_t spA,
 
 /* Returns the number of non-zero values of matrix float *mat. rows and cols are the dimensions of *mat, and n_non_zeroes is the return value (should be initialized to 0 before calling this function). */
 template <typename T>
-__host__ inline void count_non_zeros(T *mat, unsigned int rows, unsigned int cols, unsigned int *n_non_zeros)
+__host__ inline void count_non_zeros(T *mat, uint64_t rows, uint64_t cols, uint64_t *n_non_zeros)
 {
   const T eps = T(1e-9);
   // number of non zero values in *mat
 
-  for (unsigned int i = 0; i < rows; ++i)
+  for (uint64_t i = 0; i < rows; ++i)
   {
-    for (unsigned int j = 0; j < cols; ++j)
+    for (uint64_t j = 0; j < cols; ++j)
     {
       T t = T(0);
       t += mat[i * cols + j];
@@ -221,13 +221,13 @@ __host__ inline void count_non_zeros(T *mat, unsigned int rows, unsigned int col
 
 
 template <>
-__host__ inline void count_non_zeros<int>(int *mat, unsigned int rows, unsigned int cols, unsigned int *n_non_zeros)
+__host__ inline void count_non_zeros<int>(int *mat, uint64_t rows, uint64_t cols, uint64_t *n_non_zeros)
 {
   const int eps = 0;
 
-  for (unsigned int i = 0; i < rows; ++i)
+  for (uint64_t i = 0; i < rows; ++i)
   {
-    for (unsigned int j = 0; j < cols; ++j)
+    for (uint64_t j = 0; j < cols; ++j)
     {
       int t = 0;
       t += mat[i * cols + j];
@@ -244,14 +244,14 @@ __host__ inline void count_non_zeros<int>(int *mat, unsigned int rows, unsigned 
 
 /* Returns a contiguous array containing all the non zero values in *mat. The return array must be pre allocated, its size is the value returned by count_non_zeroes */
 template <typename T>
-__host__ inline void extract_non_zeros(T *mat, unsigned int rows, unsigned int cols, T *non_zero_values)
+__host__ inline void extract_non_zeros(T *mat, uint64_t rows, uint64_t cols, T *non_zero_values)
 {
   const T eps = T(1e-9);
-  unsigned int idx = 0;
+  uint64_t idx = 0;
 
-  for (unsigned int i = 0; i < rows; ++i)
+  for (uint64_t i = 0; i < rows; ++i)
   {
-    for (unsigned int j = 0; j < cols; ++j)
+    for (uint64_t j = 0; j < cols; ++j)
     {
       T t = T(0);
       t += mat[i * cols + j];
@@ -265,14 +265,14 @@ __host__ inline void extract_non_zeros(T *mat, unsigned int rows, unsigned int c
 }
 
 template <>
-__host__ inline void extract_non_zeros<int>(int *mat, unsigned int rows, unsigned int cols, int *non_zero_values)
+__host__ inline void extract_non_zeros<int>(int *mat, uint64_t rows, uint64_t cols, int *non_zero_values)
 {
   const int eps = 0;
-  unsigned int idx = 0;
+  uint64_t idx = 0;
 
-  for (unsigned int i = 0; i < rows; ++i)
+  for (uint64_t i = 0; i < rows; ++i)
   {
-    for (unsigned int j = 0; j < cols; ++j)
+    for (uint64_t j = 0; j < cols; ++j)
     {
       int t = 0;
       t += mat[i * cols + j];
