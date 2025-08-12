@@ -4,16 +4,18 @@
 namespace sparse_blockedell
 {
 
-__host__ int computeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernelSize)
+__host__ uint64_t computeZeroBlocks (torch::Tensor &A, uint64_t rows, uint64_t cols, uint16_t kernelSize)
 {
-  int nBlocksH, nBlocksW, res;
+  uint64_t nBlocksH;
+  uint64_t nBlocksW
+  uint64_t res;
   torch::Tensor B, bSums;
   nBlocksH = rows / kernelSize;
   nBlocksW = cols / kernelSize;
   B = A.view({nBlocksH, kernelSize, nBlocksW, kernelSize});
   B = B.permute({0, 2, 1, 3});
   bSums = B.sum({2, 3});
-  res = (bSums == 0).sum().item<int>();
+  res = (bSums == 0).sum().item<uint64_t>();
   return res;
 }
 
@@ -28,31 +30,31 @@ __host__ int computeZeroBlocks (torch::Tensor &A, int rows, int cols, int kernel
  * @return int, the number of zero blocks of size kernelSize x kernelSize in tensor A
  */
 template <typename T>
-__host__ int iterativeComputeZeroBlocks(torch::Tensor &A, int rows, int cols, int kernelSize)
+__host__ uint64_t iterativeComputeZeroBlocks(torch::Tensor &A, uint64_t rows, uint64_t cols, uint16_t kernelSize)
 {
-  int count = 0;
-  int nBlocksH = rows / kernelSize;
-  int nBlocksW = cols / kernelSize;
+  uint64_t count = 0;
+  uint64_t nBlocksH = rows / kernelSize;
+  uint64_t nBlocksW = cols / kernelSize;
   std::vector<T*> rowPointers (rows);
   # pragma omp parallel
   {
     #   pragma omp for
-    for (int i = 0; i < rows; ++i)
+    for (uint64_t i = 0; i < rows; ++i)
     {
       rowPointers[i] = A[i].contiguous().data_ptr<T>();
     }
     #   pragma omp for collapse(2) reduction(+:count)
-    for (int i = 0; i < nBlocksH; ++i)
+    for (uint64_t i = 0; i < nBlocksH; ++i)
     {
-      for (int j = 0; j < nBlocksW; ++j)
+      for (uint64_t j = 0; j < nBlocksW; ++j)
       {
         bool isZeroBlock = true;
-        for (int ii = 0; ii < kernelSize && isZeroBlock; ++ii)
+        for (uint16_t ii = 0; ii < kernelSize && isZeroBlock; ++ii)
         {
-          for (int jj = 0; jj < kernelSize; ++jj)
+          for (uint16_t jj = 0; jj < kernelSize; ++jj)
           {
-            int row = i * kernelSize + ii;
-            int col = j * kernelSize + jj;
+            uint64_t row = i * static_cast<uint64_t>(kernelSize) + static_cast<uint64_t>(ii);
+            uint64_t col = j *static_cast<uint64_t>(kernelSize) + static_cast<uint64_t>(jj);
             if (rowPointers[row][col] != T(0)) // This is needed to ensure compatibility of this template with different types. Cast whatever type you have to float and compare it to zero
             {
               isZeroBlock = false;
