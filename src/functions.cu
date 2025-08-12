@@ -676,21 +676,22 @@ template __host__ void getEllValues<double>(torch::Tensor&, double*, int32_t*, u
 template __host__ void getEllValues<int8_t>(torch::Tensor& A, int8_t*, int32_t*, uint64_t, uint64_t, uint16_t);
 template __host__ void getEllValues<int>(torch::Tensor&, int*, int32_t*, uint64_t, uint64_t, uint16_t);
 
-template __host__ int getBellParams<float>(torch::Tensor&, int, int, int&, int&, int*&, float*&);
-template __host__ int getBellParams<double>(torch::Tensor&, int, int, int&, int&, int*&, double*&);
+
+template __host__ int getBellParams<float>(torch::Tensor&, uint64_t, uint64_t, uint16_t&, uint64_t&, int32_t*&, float*&);
+template __host__ int getBellParams<double>(torch::Tensor&, uint64_t, uint64_t, uint16_t&, uint64_t&, int32_t*&, double*&);
 // template __host__ int getBellParams<at::Half>(torch::Tensor&, int, int, int&, int&, int*&, at::Half*&);
 
-template __host__ int getBellParams<int8_t>(torch::Tensor&, int, int, int&, int&, int*&, int8_t*&);
-template __host__ int getBellParams<int>(torch::Tensor&, int, int, int&, int&, int*&, int*&);
+template __host__ int getBellParams<int8_t>(torch::Tensor&, uint64_t, uint64_t, uint16_t&, uint64_t&, int32_t*&, int8_t*&);
+template __host__ int getBellParams<int>(torch::Tensor&, uint64_t, uint64_t, uint16_t&, uint64_t&, int32_t*&, int8_t*&);
 
-template __host__ int convert_to_blockedell<double>(torch::Tensor &A , cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, int *dA_columns, double *dA_values,
-                                                    double *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, double *ellValue);
-template __host__ int convert_to_blockedell<float>(torch::Tensor &A , cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, int *dA_columns, float *dA_values,
-                                                   float *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, float *ellValue);
+template __host__ int convert_to_blockedell<double>(torch::Tensor &A , cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, uint64_t *dA_columns, double *dA_values,
+                                                    double *dA_dense, uint16_t *ellBlockSize, uint64_t *ellCols, int32_t *ellColInd, double *ellValue);
+template __host__ int convert_to_blockedell<float>(torch::Tensor &A , cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, uint64_t *dA_columns, float *dA_values,
+                                                   float *dA_dense, uint16_t *ellBlockSize, uint64_t *ellCols, int32_t *ellColInd, float *ellValue);
 // template __host__ int convert_to_blockedell<__half>(torch::Tensor &A, cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, int *dA_columns, __half *dA_values,
 //                                                     __half *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, __half *ellValue);
-template __host__ int convert_to_blockedell<int>(torch::Tensor &A , cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, int *dA_columns, int *dA_values,
-                                                 int *dA_dense, int *ellBlockSize, int *ellCols, int *ellColInd, int *ellValue);
+template __host__ int convert_to_blockedell<int>(torch::Tensor &A , cusparseDnMatDescr_t &matA, cusparseSpMatDescr_t &spA, uint64_t *dA_columns, int *dA_values,
+                                                 int *dA_dense, uint16_t *ellBlockSize, uint64_t *ellCols, int32_t *ellColInd, int *ellValue);
 
 template __host__ int execute_spmm<double>(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t B, cusparseDnMatDescr_t C, double alpha, double beta);
 template __host__ int execute_spmm<float>(cusparseSpMatDescr_t spA, cusparseDnMatDescr_t B, cusparseDnMatDescr_t C, float alpha, float beta);

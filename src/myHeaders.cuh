@@ -55,7 +55,7 @@ const int ALLOW_NESTED = 1;
 struct BellMetadata
 {
   uint16_t ellBlockSize; /* Size of the blocks */
-  utin64_t ellCols;      /* Number of columns in ellValue array */
+  uint64_t ellCols;      /* Number of columns in ellValue array */
   torch::Tensor ellColInd;   /* Array of indices */
   torch::Tensor ellValue;      /* Values array */
   std::vector<uint64_t> size;
