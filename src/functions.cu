@@ -395,7 +395,7 @@ __host__ int getBellParams(torch::Tensor& A, uint64_t x, uint64_t y, uint16_t& e
   bSums = computeEllCols(A, x, y, ellBlockSize);
   // bSums = iterativeComputeEllCols<T>(A, x, y, ellBlockSize);
 
-  ellCols = (bSums != 0.0f).sum(1).max().item<uint16_t>();
+  ellCols = (bSums != 0.0f).sum(1).max().item<uint16_t>(); //TODO: Change ellCols into a uint32_t variable!!!
   tEnd = omp_get_wtime();
   printf("computeEllCols time: %f\n", tEnd - tStart);
 
