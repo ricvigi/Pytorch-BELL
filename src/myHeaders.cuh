@@ -382,19 +382,18 @@ static inline void printEllValue(float* ellValue, int rows, int cols, int kernel
  *
  * @return The size of the array of integers that stores all the found divisors of x
  */
-static inline int findDivisors(int x, int*& divisors)
+static inline uint32_t findDivisors(uint64_t x, int*& divisors)
 {
-  int size = 0;
-  int i;
+  uint32_t size = 0;
   # pragma omp parallel for schedule(static, 1)
-  for (i = 2; i <= (x / 2); ++i) /* With normal iteration the result array is naturally sorted */
+  for (uint64_t i = 2; i <= (x / 2); ++i) /* With normal iteration the result array is naturally sorted */
   {
     if (x % i == 0)
     {
-      #     pragma omp critical
+      # pragma omp critical
       {
         size += 1;
-        divisors = (int*) realloc(divisors, sizeof(int)*size);
+        divisors = (uint64_t*) realloc(divisors, sizeof(uint64_t)*size);
       }
       divisors[size - 1] = i;
     }

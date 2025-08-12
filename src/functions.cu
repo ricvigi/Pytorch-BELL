@@ -222,7 +222,7 @@ __host__ void getEllColInd (torch::Tensor &bSums, int32_t *ellColInd, uint64_t r
 template <typename T>
 __host__ void getEllValues (torch::Tensor& A, T* ellValue, int32_t* ellColInd, uint64_t rows, uint64_t cols, uint16_t ellBlockSize)
 {
-  uint64_t blockCol;
+  int64_t blockCol;
   uint64_t rowIndex;
   std::vector<T*> rowPointers(rows * ellBlockSize);
 
@@ -248,7 +248,7 @@ __host__ void getEllValues (torch::Tensor& A, T* ellValue, int32_t* ellColInd, u
           T* rowA = rowPointers[rowIndex];
           uint64_t srcOffset = local_ellBlockSize * blockCol;
           uint64_t dstOffset = ((i * cols + j) * local_ellBlockSize + bi) * ellBlockSize;
-          if (blockCol != -1)
+          if (blockCol != -1) // NOTE: you could move this earlier, you don't really need to compute srcOffset if blockCol is -1
           {
             memcpy(&ellValue[dstOffset], &rowA[srcOffset], local_ellBlockSize * sizeof(T));
           } else
@@ -274,13 +274,14 @@ __host__ void getEllValues (torch::Tensor& A, T* ellValue, int32_t* ellColInd, u
  *
  * @return int EXIT_SUCCESS or int EXIT_FAILURE
  */
+uint64_t x, uint64_t y, uint16_t& ellBlockSize, uint64_t& ellCols, int32_t*& ellColInd, T*& ellValue
 template <typename T>
-__host__ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, int& ellCols, int*& ellColInd, T*& ellValue)
+__host__ int getBellParams(torch::Tensor& A, uint64_t x, uint64_t y, uint16_t& ellBlockSize, uint16_t& ellCols, int32_t*& ellColInd, T*& ellValue)
 {
   /* Variable declarations */
-  int i;
-  int zeroCount;
-  int *divisors;
+  uint64_t i;
+  uint64_t zeroCount;
+  uint64_t* divisors;
   int divisorsSize;
   int rows;
   int cols;
@@ -327,21 +328,20 @@ __host__ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, in
   omp_set_num_threads(nThreads);
   printf("divisorsSize: %d\n", divisorsSize);
 
-  std::vector<int> localZeroCount(nThreads);
-  std::vector<int> localKernels(nThreads);
+  std::vector<uint64_t> localZeroCount(nThreads);
+  std::vector<uint16_t> localKernels(nThreads);
 
   start = omp_get_wtime();
   tStart = omp_get_wtime();
   # pragma omp parallel shared(zeroCount, ellBlockSize, localZeroCount)
   {
-    int localKernelSize;
-    int localZeroBlocks;
-    int localNZeroes;
-    int localBestZeroes;
-    int localBestKernel;
+    uint16_t localKernelSize;
+    uint64_t localZeroBlocks;
+    uint64_t localNZeroes;
+    uint64_t localBestZeroes = 0;
+    uint16_t localBestKernel;
     int id;
     id = omp_get_thread_num();
-    localBestZeroes = 0;
 
     /* NOTE: Should we use a guided schedule for this loop parallelism?
      *    /* ATTENTION: This routine might be a waste of time... remember that if blocksize 2*n has < zeroes than blocksize
@@ -369,8 +369,9 @@ __host__ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, in
      localKernels[id] = localBestKernel;
   }
   /* Get the best block size value */
-  int z, k;
-  for (int i = 0; i < nThreads; ++i)
+  uint64_t z;
+  uint16_t k;
+  for (uint16_t i = 0; i < nThreads; ++i)
   {
     z = localZeroCount[i];
     k = localKernels[i];
@@ -394,7 +395,7 @@ __host__ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, in
   bSums = computeEllCols(A, x, y, ellBlockSize);
   // bSums = iterativeComputeEllCols<T>(A, x, y, ellBlockSize);
 
-  ellCols = (bSums != 0.0f).sum(1).max().item<int>();
+  ellCols = (bSums != 0.0f).sum(1).max().item<uint16_t>();
   tEnd = omp_get_wtime();
   printf("computeEllCols time: %f\n", tEnd - tStart);
 
@@ -402,7 +403,7 @@ __host__ int getBellParams(torch::Tensor& A, int x, int y, int& ellBlockSize, in
   rows = x / ellBlockSize;
   cols = ellCols;
   size = rows*cols;
-  ellColInd = (int*) malloc(size*sizeof(int));
+  ellColInd = (int32_t*) malloc(size*sizeof(int32_t));
 
   tStart = omp_get_wtime();
   /* Create the ellColInd array */
