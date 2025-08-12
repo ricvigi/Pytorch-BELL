@@ -33,8 +33,8 @@ template <typename T>
 __host__ uint64_t iterativeComputeZeroBlocks(torch::Tensor &A, uint64_t rows, uint64_t cols, uint16_t kernelSize)
 {
   uint64_t count = 0;
-  uint64_t nBlocksH = rows / kernelSize;
-  uint64_t nBlocksW = cols / kernelSize;
+  uint64_t nBlocksH = rows / static_cast<uint64_t>(kernelSize);
+  uint64_t nBlocksW = cols / static_cast<uint64_t>(kernelSize);
   std::vector<T*> rowPointers (rows);
   # pragma omp parallel
   {
@@ -105,10 +105,10 @@ __host__ torch::Tensor computeEllCols (torch::Tensor& A, int rows, int cols, int
  * @return returns a torch::Tensor object, that stores the sum of the values of all blocks of size kernelSize x kernelSize in A. From this object we will compute ellCols, but since we need it elsewhere, we return this object instead
  */
 template <typename T>
-__host__ torch::Tensor iterativeComputeEllCols (torch::Tensor& A, int rows, int cols, int kernelSize)
+__host__ torch::Tensor iterativeComputeEllCols (torch::Tensor& A, uint64_t rows, uint64_t cols, int16_t kernelSize)
 {
-  int nBlocksH = rows / kernelSize;
-  int nBlocksW = cols / kernelSize;
+  uint64_t nBlocksH = rows / static_cast<uint64_t>(kernelSize);
+  uint64_t nBlocksW = cols / static_cast<uint64_t>(kernelSize);
   torch::Tensor bSums;
   T *tBSums;
   tBSums = (T*) malloc(rows*cols*sizeof(T));
@@ -118,22 +118,22 @@ __host__ torch::Tensor iterativeComputeEllCols (torch::Tensor& A, int rows, int 
   # pragma omp parallel
   {
     #   pragma omp for
-    for (int i = 0; i < rows; ++i)
+    for (uint64_t i = 0; i < rows; ++i)
     {
       rowPointers[i] = A[i].contiguous().data_ptr<T>();
     }
     #   pragma omp for collapse(2)
-    for (int i = 0; i < nBlocksH; ++i)
+    for (uint64_t i = 0; i < nBlocksH; ++i)
     {
-      for (int j = 0; j < nBlocksW; ++j)
+      for (uint64_t j = 0; j < nBlocksW; ++j)
       {
         T sum = T(0);
-        for (int ii = 0; ii < kernelSize; ++ii)
+        for (uint64_t ii = 0; ii < kernelSize; ++ii)
         {
-          for (int jj = 0; jj < kernelSize; ++jj)
+          for (uint64_t jj = 0; jj < kernelSize; ++jj)
           {
-            int row = i * kernelSize + ii;
-            int col = j * kernelSize + jj;
+            uint64_t row = i * static_cast<uint64_t>(kernelSize) + static_cast<uint64_t>(ii);
+            uint64_t col = j *static_cast<uint64_t>(kernelSize) + static_cast<uint64_t>(jj);
             T val = rowPointers[row][col];
             sum += val;
           }
@@ -158,30 +158,31 @@ __host__ torch::Tensor iterativeComputeEllCols (torch::Tensor& A, int rows, int 
  *
  * @return void. The return value of this function is ellColInd
  */
-// template <typename T>
-__host__ void getEllColInd (torch::Tensor &bSums, int *ellColInd, int rows, int cols)
+template <typename T>
+__host__ void getEllColInd (torch::Tensor &bSums, int32_t *ellColInd, uint64_t rows, uint64_t cols)
 {
-  using T = double;
-  int idx, rowSize;
+  // using T = double;
+  uint64_t idx;
+  uint64_t rowSize;
   T val;
 
   std::vector<T*> rowPointers(rows);
   # pragma omp parallel shared(ellColInd) private(idx, rowSize, val)
   {
     #   pragma omp for
-    for (int i = 0; i < rows; ++i)
+    for (uint64_t i = 0; i < rows; ++i)
     {
       rowPointers[i] = bSums[i].contiguous().data_ptr<T>();
     }
 
     #   pragma omp for
-    for (int i = 0; i < rows; ++i)
+    for (uint64_t i = 0; i < rows; ++i)
     {
       idx = 0;
       rowSize = 0;
       T* row = (T*) malloc(cols*sizeof(T));
       T* bSumsRow = rowPointers[i];
-      for (int j = 0; j < bSums.size(1); ++j)
+      for (uint64_t j = 0; j < static_cast<uint64_t>(bSums.size(1)); ++j)
       {
         val = bSumsRow[j];
         if (val != T(0))
@@ -191,7 +192,7 @@ __host__ void getEllColInd (torch::Tensor &bSums, int *ellColInd, int rows, int 
           idx++;
         }
       }
-      for (int j = 0; j < cols; ++j)
+      for (uint64_t j = 0; j < cols; ++j)
       {
         if (j < rowSize)
         {
@@ -219,35 +220,37 @@ __host__ void getEllColInd (torch::Tensor &bSums, int *ellColInd, int rows, int 
  * @return void. The return value of this function is ellValue
  */
 template <typename T>
-__host__ void getEllValues (torch::Tensor& A, T *ellValue, int *ellColInd, int rows, int cols, int ellBlockSize)
+__host__ void getEllValues (torch::Tensor& A, T* ellValue, int32_t* ellColInd, uint64_t rows, uint64_t cols, uint16_t ellBlockSize)
 {
-  int blockCol;
-  int rowIndex;
+  uint64_t blockCol;
+  uint64_t rowIndex;
   std::vector<T*> rowPointers(rows * ellBlockSize);
+
+  uint64_t local_ellBlockSize = static_cast<uint64_t>(ellBlockSize); // Just use this to avoid casting too many times
 
   # pragma omp parallel shared(rowPointers, A, ellColInd, ellValue) private(blockCol, rowIndex)
   {
     #   pragma omp for
-    for (int i = 0; i < rows * ellBlockSize; ++i)
+    for (uint64_t i = 0; i < rows * local_ellBlockSize; ++i)
     {
       rowPointers[i] = A[i].contiguous().data_ptr<T>();
     }
 
     #   pragma omp for collapse(2)
-    for (int i = 0; i < rows; ++i)
+    for (uint64_t i = 0; i < rows; ++i)
     {
-      for (int j = 0; j < cols; ++j)
+      for (uint64_t j = 0; j < cols; ++j)
       {
         blockCol = ellColInd[i * cols + j];
-        for (int bi = 0; bi < ellBlockSize; ++bi)
+        for (uint64_t bi = 0; bi < local_ellBlockSize; ++bi)
         {
           rowIndex = i * ellBlockSize + bi;
           T* rowA = rowPointers[rowIndex];
-          int srcOffset = ellBlockSize * blockCol;
-          int dstOffset = ((i * cols + j) * ellBlockSize + bi) * ellBlockSize;
+          uint64_t srcOffset = local_ellBlockSize * blockCol;
+          uint64_t dstOffset = ((i * cols + j) * local_ellBlockSize + bi) * ellBlockSize;
           if (blockCol != -1)
           {
-            memcpy(&ellValue[dstOffset], &rowA[srcOffset], ellBlockSize * sizeof(T));
+            memcpy(&ellValue[dstOffset], &rowA[srcOffset], local_ellBlockSize * sizeof(T));
           } else
           {
             std::fill(&ellValue[dstOffset], &ellValue[dstOffset + ellBlockSize], T(0));
