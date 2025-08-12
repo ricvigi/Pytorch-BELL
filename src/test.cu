@@ -1,4 +1,3 @@
-#pragma once
 #include "myHeaders.cuh"
 
 template <typename T>

@@ -297,7 +297,7 @@ __host__ inline void extract_non_zeros<int>(int *mat, uint64_t rows, uint64_t co
  *
  * @return void
  */
-static inline void printTensor(const torch::Tensor &A, int x, int y)
+static inline void printTensor(const torch::Tensor &A, uint64_t x, uint64_t y)
 {
   for (int i = 0; i < x; ++i)
   {
