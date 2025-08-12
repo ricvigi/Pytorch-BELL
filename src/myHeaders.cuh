@@ -1,7 +1,6 @@
 #pragma once
 
 #include <torch/torch.h>
-#include <torch/extension.h>
 #include <type_traits>
 #include <cstdio>            // printf
 #include <cstdlib>           // EXIT_FAILURE
